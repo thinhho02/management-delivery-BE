@@ -7,9 +7,22 @@ import { notifySession } from "./notifySession.js";
 export let io: Server;
 
 export const initSocket = (server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>) => {
+
     io = new Server(server, {
         cors: {
-            origin: "http://localhost:3000",
+            origin: async function (origin, callback) {
+                // Allow requests with no origin (mobile apps, curl, postman)
+                if (!origin) return callback(null, true);
+                
+                const pathFE = process.env.ORIGIN_PATH_FRONTEND
+                const whitelist = ["http://localhost:3000", pathFE]
+                if (whitelist.includes(origin)) {
+                    callback(null, true);
+                } else {
+                    console.log("❌ CORS blocked:", origin);
+                    callback(new Error("Not allowed by CORS"));
+                }
+            },
             methods: ["GET", "POST"],
             credentials: true
         },

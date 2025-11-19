@@ -17,6 +17,8 @@ dotenv.config({
     path: `.env.${process.env.NODE_ENV}`
 });
 
+const PORT = process.env.PORT || 5000;
+
 // config
 const app = express()
 const server = http.createServer(app)
@@ -37,12 +39,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.SECRET_KEY_COOKIE))
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: async function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, postman)
+        if (!origin) return callback(null, true);
+        const pathFE = process.env.ORIGIN_PATH_FRONTEND
+        const whitelist = ["http://localhost:3000", pathFE]
+        if (whitelist.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log("❌ CORS blocked:", origin);
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     credentials: true
 }));
-const portServer = 5000
-const portSocket = 5001
-
 
 
 initSocket(server)
@@ -54,11 +64,8 @@ app.use(errorHandler)
 
 // run server
 connectDB().then(() => {
-    app.listen(portServer, () => {
-        console.log(`server app running listen port ${portServer}`);
-    })
-    server.listen(portSocket, () => {
-        console.log(`socket running listen port ${portSocket}`)
+    server.listen(PORT, () => {
+        console.log(`server & socket running listen port ${PORT}`)
     })
 }).catch(error => {
     console.log(`error server`);
