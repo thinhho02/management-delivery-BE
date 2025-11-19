@@ -8,10 +8,40 @@ import bcrypt from "bcryptjs";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 
+export const checkSession = catchError(async (req, res) => {
+    const { refreshToken } = req.cookies;
+    console.log(refreshToken)
+    if (!refreshToken) {
+        return res.status(401).json({ loggedIn: false });
+    }
+    let decoded;
+    try {
+        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY!) as JwtPayload;
+    } catch (err) {
+        return res.status(401).json({ loggedIn: false });
+    }
+    const session = await SessionModel.findById(decoded.sid);
+    console.log(!session || !session.refreshTokenExp || session.refreshTokenExp.getTime() < Date.now())
+    if (!session || !session.isActive || !session.refreshTokenExp || session.refreshTokenExp.getTime() < Date.now()) {
+        return res.status(401).json({ loggedIn: false });
+    }
+
+    const roleName = await RoleModel.findById(decoded.role)
+    if (!roleName) {
+        return res.status(401).json({ loggedIn: false });
+    }
+
+    return res.status(200).json({
+        sid: session.id,
+        loggedIn: true,
+        roleName: roleName.name
+    });
+})
+
 
 export const getUserSession = catchError(async (req, res) => {
-    const { refreshToken } = req.signedCookies;
-    console.log(refreshToken)
+    const { refreshToken } = req.cookies;
+    console.log(req.cookies)
     if (!refreshToken) {
         return res.status(401).json({ loggedIn: false });
     }
@@ -63,7 +93,7 @@ export const getUserSession = catchError(async (req, res) => {
 
 
 export const handleRefreshToken = catchError(async (req, res) => {
-    const token = req.signedCookies?.refreshToken;
+    const token = req.cookies?.refreshToken;
     if (!token) {
         return res.status(401).json({ message: "Missing refresh token" });
     }
@@ -145,7 +175,7 @@ export const handleRefreshToken = catchError(async (req, res) => {
         sameSite: "none",
         path: '/',
     }
-    
+
 
     return res.cookie("refreshToken", newRefreshToken, {
         httpOnly: true,

@@ -298,7 +298,7 @@ export const loginBusiness = catchError(async (req, res) => {
         httpOnly: true,
         maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: "none",
+        sameSite:  process.env.NODE_ENV === 'production' ? "none" : "lax",
         path: '/',
     }).status(200).json({
         accessToken,

@@ -13,9 +13,10 @@ import http from "http";
 import { initSocket } from "./socket/index.js";
 
 // environment config
-dotenv.config({
-    path: `.env.${process.env.NODE_ENV}`
-});
+// dotenv.config({
+//     path: `.env.${process.env.NODE_ENV}`
+// });
+dotenv.config()
 
 const PORT = process.env.PORT || 5000;
 

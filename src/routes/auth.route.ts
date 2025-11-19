@@ -1,5 +1,5 @@
 import { getBusiness, loginBusiness, logoutBusiness, registerBusiness } from "@/controllers/auth.business.controller.js";
-import { getUserSession, handleRefreshToken } from "@/controllers/auth.controller.js";
+import { checkSession, getUserSession, handleRefreshToken } from "@/controllers/auth.controller.js";
 import { verifyAccessToken } from "@/middlewares/verifyAccessToken.js";
 import { Router } from "express";
 
@@ -7,6 +7,7 @@ const routeAuth = Router()
 // /auth
 routeAuth.get("/refresh-token", handleRefreshToken)
 routeAuth.get("/get-session", getUserSession)
+routeAuth.get("/check-session", checkSession)
 
 
 // business
