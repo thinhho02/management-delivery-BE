@@ -43,6 +43,7 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, curl, postman)
         if (!origin) return callback(null, true);
         const pathFE = process.env.ORIGIN_PATH_FRONTEND
+        console.log(pathFE)
         const whitelist = ["http://localhost:3000", pathFE]
         if (whitelist.includes(origin)) {
             callback(null, true);

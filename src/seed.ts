@@ -20,6 +20,9 @@ const roles = [
   },
   {
     name: "staffOffice",
+  },
+  {
+    name: "adminOffice",
   }
 ];
 

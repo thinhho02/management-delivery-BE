@@ -11,7 +11,7 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 
 export const getUserSession = catchError(async (req, res) => {
     const { refreshToken } = req.signedCookies;
-
+    console.log(refreshToken)
     if (!refreshToken) {
         return res.status(401).json({ loggedIn: false });
     }

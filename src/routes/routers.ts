@@ -7,7 +7,7 @@ import { UAParser } from "ua-parser-js";
 import geoip from "geoip-lite";
 
 const routes = Router()
-
+//  /api
 routes.use("/mapbox", routeMapBox)
 routes.use("/auth", routeAuth)
 routes.use("/business", routeBusiness)
