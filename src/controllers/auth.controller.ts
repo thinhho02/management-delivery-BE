@@ -143,11 +143,21 @@ export const handleRefreshToken = catchError(async (req, res) => {
         maxAge: expiresAt,
         // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
         secure: process.env.NODE_ENV === 'production',
+        sameSite: "none",
         path: '/',
         signed: true
     }
+    
 
-    return res.cookie("refreshToken", newRefreshToken, cookieOpts).status(200).json({
+    return res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        maxAge: expiresAt,
+        // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: "none",
+        path: '/',
+        signed: true
+    }).status(200).json({
         success: true,
         newAccessToken,
     })

@@ -291,11 +291,20 @@ export const loginBusiness = catchError(async (req, res) => {
         maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
         // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
         secure: process.env.NODE_ENV === 'production',
+        sameSite: "none",
         path: '/',
         signed: true
     }
-
-    return res.cookie("refreshToken", refreshToken, cookieOpts).status(200).json({
+    console.log(cookieOpts)
+    return res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
+        // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: "none",
+        path: '/',
+        signed: true
+    }).status(200).json({
         accessToken,
         // isNewDevice,
         // isSuspicious,
@@ -372,9 +381,21 @@ export const logoutBusiness = catchError(async (req, res) => {
     session.refreshTokenExp = null;
     await session.save();
 
+    // const cookieOpts = {
+    //     httpOnly: true,
+    //     maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
+    //     // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
+    //     secure: process.env.NODE_ENV === 'production',
+    //     sameSite: "none",
+    //     path: '/',
+    //     signed: true
+    // }
+    
+
     res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
+        sameSite: 'none',
         path: "/",
         signed: true
     });

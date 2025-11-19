@@ -37,7 +37,6 @@ app.use(shrinkRay({
 }))
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser(process.env.SECRET_KEY_COOKIE))
 app.use(cors({
     origin: async function (origin, callback) {
         // Allow requests with no origin (mobile apps, curl, postman)
@@ -54,6 +53,7 @@ app.use(cors({
     },
     credentials: true
 }));
+app.use(cookieParser(process.env.SECRET_KEY_COOKIE))
 
 
 initSocket(server)
