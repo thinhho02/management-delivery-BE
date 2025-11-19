@@ -53,7 +53,7 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(cookieParser(process.env.SECRET_KEY_COOKIE))
+app.use(cookieParser())
 
 
 initSocket(server)

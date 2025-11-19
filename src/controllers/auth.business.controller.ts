@@ -289,21 +289,17 @@ export const loginBusiness = catchError(async (req, res) => {
     const cookieOpts = {
         httpOnly: true,
         maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
-        // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
         secure: process.env.NODE_ENV === 'production',
         sameSite: "none",
         path: '/',
-        signed: true
     }
     console.log(cookieOpts)
     return res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
-        // domain: process.env.ORIGIN_PATH_FRONTEND ? process.env.ORIGIN_PATH_FRONTEND : 'localhost',
         secure: process.env.NODE_ENV === 'production',
         sameSite: "none",
         path: '/',
-        signed: true
     }).status(200).json({
         accessToken,
         // isNewDevice,
@@ -388,16 +384,14 @@ export const logoutBusiness = catchError(async (req, res) => {
     //     secure: process.env.NODE_ENV === 'production',
     //     sameSite: "none",
     //     path: '/',
-    //     signed: true
     // }
-    
+
 
     res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: 'none',
+        sameSite: "none",
         path: "/",
-        signed: true
     });
 
     return res.status(200).json({
