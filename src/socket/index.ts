@@ -9,11 +9,14 @@ export let io: Server;
 export const initSocket = (server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>) => {
 
     io = new Server(server, {
+        transports: ["websocket"],
+        pingInterval: 25000,
+        pingTimeout: 20000,
         cors: {
             origin: async function (origin, callback) {
                 // Allow requests with no origin (mobile apps, curl, postman)
                 if (!origin) return callback(null, true);
-                
+
                 const pathFE = process.env.ORIGIN_PATH_FRONTEND
                 const whitelist = ["http://localhost:3000", pathFE]
                 if (whitelist.includes(origin)) {
