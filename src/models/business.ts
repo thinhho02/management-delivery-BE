@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import mongoose, { Document, Schema } from "mongoose";
 
-export type BusinessType = "marketplace" | "ecommerce"
+export type BusinessType = "marketplace" | "individual"
 
 export interface IBusiness extends Document {
     type: BusinessType;
@@ -10,10 +10,10 @@ export interface IBusiness extends Document {
     passwordHash: string;
     api_key?: string;
     website?: string;
-    tax_code?: string;
-    status: number;
+    status: boolean;
     role: mongoose.Types.ObjectId;
-    password_reset_token?: string;
+    password_reset_token?: string | undefined;
+    password_reset_expires?: Date | undefined;
     created_at: Date;
     updated_at: Date;
     isPasswordMatch(password: string): Promise<boolean>;
@@ -21,18 +21,16 @@ export interface IBusiness extends Document {
 
 const BusinessSchema = new Schema<IBusiness>(
     {
-        type: { type: String, enum: ["marketplace", "ecommerce"], required: true },
+        type: { type: String, enum: ["marketplace", "individual"], required: true },
         name: { type: String },
         email: { type: String, required: true },
         passwordHash: { type: String, required: true },
         api_key: { type: String },
         website: { type: String },
         role: { type: Schema.Types.ObjectId, ref: "Role" },
-        tax_code: { type: String },
-        status: { type: Number, default: 1 },
+        status: { type: Boolean, default: true },
         password_reset_token: String,
-
-
+        password_reset_expires: Date
     },
     {
         timestamps: true

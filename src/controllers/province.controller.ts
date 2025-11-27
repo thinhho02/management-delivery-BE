@@ -13,6 +13,19 @@ export const getListProvince = catchError(async (req, res) => {
     return res.status(200).json(provinces)
 })
 
+
+export const getProvinceById = catchError(async (req, res) => {
+    const { zoneId } = req.params
+
+    const province = await Province.findById(zoneId).select("_id code name geometry").lean()
+
+    if (!province) {
+        return res.status(400).json({ message: "Khu vực hoạt động không tồn tại" })
+    }
+
+    return res.status(200).json(province)
+})
+
 export const getListProvinceByCode = catchError(async (req, res) => {
     const zonePick = ZoneSchemaZod.pick({ code: true })
     const { code } = zonePick.parse(req.body)

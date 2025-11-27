@@ -12,8 +12,7 @@ export interface IPostOffice extends Document {
   type: PostOfficeType;
   address?: string;
   location?: { type: "Point"; coordinates: [number, number] };
-  managerId?: mongoose.Types.ObjectId;
-  status?: number;
+  status?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -32,13 +31,12 @@ const PostOfficeSchema = new Schema<IPostOffice>(
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], default: [0, 0] }
     },
-    managerId: { type: Schema.Types.ObjectId, ref: "Employee" },
-    status: { type: Number, default: 1 }
+    status: { type: Boolean, default: true }
   },
   { timestamps: true }
 );
 
 PostOfficeSchema.index({ location: "2dsphere" });
 
-const PostOfficeModel = mongoose.models.PostOffice || mongoose.model<IPostOffice>("PostOffice", PostOfficeSchema);
+const PostOfficeModel = mongoose.model<IPostOffice>("PostOffice", PostOfficeSchema);
 export default PostOfficeModel;

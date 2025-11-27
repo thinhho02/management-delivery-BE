@@ -15,6 +15,19 @@ export const getListRegion = catchError(async (req, res) => {
 })
 
 
+export const getRegionById = catchError(async (req, res) => {
+    const { zoneId } = req.params
+
+    const region = await Region.findById(zoneId).select("_id code name geometry").lean()
+
+    if (!region) {
+        return res.status(400).json({ message: "Khu vực hoạt động không tồn tại" })
+    }
+
+    return res.status(200).json(region)
+})
+
+
 export const getListRegionByCode = catchError(async (req, res) => {
     const zonePick = ZoneSchemaZod.pick({ code: true })
     const { code } = zonePick.parse(req.body)

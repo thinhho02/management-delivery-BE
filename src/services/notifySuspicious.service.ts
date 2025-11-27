@@ -34,3 +34,9 @@ export const sendSuspiciousNotification = async (sessionSuspicious: string, acco
     });
   }
 }
+
+export const sendEventLogout = (sessionSuspicious: string, roleName: string) => {
+  io.to(sessionSuspicious).emit("event:logout_device_suspicious", {
+    roleName
+  })
+}

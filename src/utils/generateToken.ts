@@ -24,7 +24,7 @@ export const generateAccessToken = (payload: AccessTokenPayload) => {
   if (!process.env.JWT_KEY) {
     throw new Error("Missing JWT_KEY in environment variables");
   }
-  return Jwt.sign(payload, process.env.JWT_KEY, { expiresIn: "15m" });
+  return Jwt.sign(payload, process.env.JWT_KEY, { expiresIn: "10m" });
 };
 
 export const generateRefreshToken = (payload: RefreshTokenPayload) => {
@@ -40,7 +40,7 @@ export const generateRefreshToken = (payload: RefreshTokenPayload) => {
     },
     process.env.JWT_REFRESH_KEY,
     {
-      expiresIn: payload.remember ? "365d" : "30d",
+      expiresIn: payload.remember ? "365d" : "1d",
     }
   );
 };

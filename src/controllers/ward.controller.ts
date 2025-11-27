@@ -15,6 +15,19 @@ export const getListWard = catchError(async (req, res) => {
     return res.status(200).json(wards)
 })
 
+
+export const getWardById = catchError(async (req, res) => {
+    const { zoneId } = req.params
+
+    const ward = await Ward.findById(zoneId).select("_id code name geometry").lean()
+
+    if (!ward) {
+        return res.status(400).json({ message: "Khu vực hoạt động không tồn tại" })
+    }
+
+    return res.status(200).json(ward)
+})
+
 export const getListWardByCode = catchError(async (req, res) => {
     const zonePick = ZoneSchemaZod.pick({ code: true })
     const { code } = zonePick.parse(req.body)

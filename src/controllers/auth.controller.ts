@@ -2,6 +2,7 @@ import BusinessModel from "@/models/business.js";
 import EmployeeModel from "@/models/employee.js";
 import RoleModel from "@/models/role.js";
 import SessionModel from "@/models/session.js";
+import { sendEventLogout } from "@/services/notifySuspicious.service.js";
 import catchError from "@/utils/catchError.js";
 import { generateAccessToken, generateRefreshToken } from "@/utils/generateToken.js";
 import bcrypt from "bcryptjs";
@@ -105,6 +106,7 @@ export const handleRefreshToken = catchError(async (req, res) => {
     } catch (err) {
         return res.status(401).json({ message: "Invalid or expired refresh token" });
     }
+    console.log("đây là token", decoded)
     // Tìm session theo decoded.sid
     const session = await SessionModel.findById(decoded.sid);
     if (!session || !session.isActive) {
@@ -145,19 +147,22 @@ export const handleRefreshToken = catchError(async (req, res) => {
 
     const expiresAt = decoded.remember
         ? 365 * 24 * 60 * 60 * 1000
-        : 30 * 24 * 60 * 60 * 1000;
+        : 1 * 24 * 60 * 60 * 1000;
 
     const roleAccount = findAccount.role.toString()
     // Tạo Token mới
+    console.log(findAccount)
+    console.log(session)
+
     const newAccessToken = generateAccessToken({
-        sub: findAccount.id.toString(),
+        sub: findAccount._id.toString(),
         sid: session.id.toString(),
         role: roleAccount,
         type: "access"
     });
 
     const newRefreshToken = generateRefreshToken({
-        sub: findAccount.id.toString(),
+        sub: findAccount._id.toString(),
         sid: session.id.toString(),
         role: roleAccount,
         remember: decoded.remember,
@@ -188,4 +193,44 @@ export const handleRefreshToken = catchError(async (req, res) => {
         newAccessToken,
     })
 
+})
+
+
+export const logoutDeviceSuspicious = catchError(async (req, res) => {
+    const { sessionSuspicious } = req.body
+
+    const accountId = (req as any).user.id
+    const sessionTrust = (req as any).session
+
+    if (!sessionTrust.isTrusted) {
+        return res.status(403).json({
+            message: "Forbidden, Bạn không có quyền để sử dụng tính năng này"
+        })
+    }
+
+    const account = sessionTrust?.business
+        ? await BusinessModel.findById(accountId).populate("role", "name")
+        : await EmployeeModel.findById(accountId).populate("role", "name")
+
+    // Verify
+    if (!account) {
+        return res.status(404).json({
+            message: "Không tìm thầy tài khoản"
+        })
+    }
+
+    if (!account.status) {
+        return res.status(403).json({
+            message: "Tài khoản của bạn đã bị khóa"
+        })
+    }
+    const roleName = (account.role as any)?.name;
+
+    // Đăng xuất thiết bị lạ khỏi phiên đăng nhập 
+    await SessionModel.findByIdAndUpdate(sessionSuspicious, {
+        $set: { isActive: false, refreshTokenExp: null, refreshTokenHash: null }
+    })
+    sendEventLogout(sessionSuspicious, roleName)
+    // gửi event tới thiết bị lạ để thực hiện logout
+    return res.status(200).json()
 })

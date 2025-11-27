@@ -5,12 +5,16 @@ import routeAuth from "./auth.route.js";
 import catchError from "@/utils/catchError.js";
 import { UAParser } from "ua-parser-js";
 import geoip from "geoip-lite";
+import routePostOffice from "./postOffice.route.js";
+import routeEmployee from "./employee.route.js";
 
 const routes = Router()
 //  /api
 routes.use("/mapbox", routeMapBox)
 routes.use("/auth", routeAuth)
 routes.use("/business", routeBusiness)
+routes.use("/employee", routeEmployee)
+routes.use("/post-office", routePostOffice)
 
 
 // test
