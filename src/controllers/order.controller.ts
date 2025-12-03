@@ -11,6 +11,7 @@ import puppeteer from "puppeteer-core";
 import ShipperZone from "@/models/shipperZone.js";
 import ShipperDetailModel from "@/models/shipperDetail.js";
 import ShipperTaskModel from "@/models/shipperTask.js";
+import { launchBrowser } from "@/utils/puppeteer.js";
 
 
 const SchemaInputOrder = z.object({
@@ -506,12 +507,7 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
 
 
 
-    const browser = await puppeteer.launch({
-        args: [...Chromium.args, "--hide-scrollbars", "--disable-web-security"],
-        defaultViewport: Chromium.defaultViewport,
-        executablePath: await Chromium.executablePath(),
-        headless: true, // Use Chromium.headless for serverless compatibility
-    });
+    const browser = await launchBrowser()
 
     const page = await browser.newPage();
     await page.setContent(buildPdf, { waitUntil: "networkidle0" });
@@ -537,7 +533,7 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
         "Content-Disposition",
-        `attachment; filename="labels_${pageSize.toLowerCase()}.pdf"`
+        `attachment; filename="labels_${pageSize.toLowerCase()}_${Date.now}.pdf"`
     );
     return res.send(pdfBuffer);
 });
