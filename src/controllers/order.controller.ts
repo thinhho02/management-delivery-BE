@@ -505,11 +505,12 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
     // Puppeteer sinh PDF
 
 
+
     const browser = await puppeteer.launch({
-        args: Chromium.args,
+        args: [...Chromium.args, "--hide-scrollbars", "--disable-web-security"],
         defaultViewport: Chromium.defaultViewport,
         executablePath: await Chromium.executablePath(),
-        headless: true,
+        headless: true, // Use Chromium.headless for serverless compatibility
     });
 
     const page = await browser.newPage();
@@ -518,9 +519,11 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
     const pdfBuffer = await page.pdf({
         format: pageSize,
         printBackground: true,
+        // margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' } // Customize margins as needed
     });
 
     await browser.close();
+
 
     // Merge tất cả PDF (puppeteer làm được)
 
