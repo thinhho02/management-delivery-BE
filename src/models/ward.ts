@@ -4,7 +4,6 @@ export interface IWard extends Document {
     code?: string;
     name?: string;
     slug?: string;
-    tileset?: string;
     provinceId?: mongoose.Types.ObjectId;
     geometry?: any;
 }
@@ -12,7 +11,6 @@ const WardSchema = new Schema<IWard>({
     code: { type: String, unique: true },
     name: String,
     slug: String,
-    tileset: String,
     provinceId: { type: Schema.Types.ObjectId, ref: "Province" },
     geometry: {
         type: { type: String, enum: ["Polygon", "MultiPolygon"] },

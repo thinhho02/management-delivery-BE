@@ -10,7 +10,7 @@ export interface IPostOffice extends Document {
   provinceId?: mongoose.Types.ObjectId;
   wardId?: mongoose.Types.ObjectId;
   type: PostOfficeType;
-  address?: string;
+  address: string;
   location?: { type: "Point"; coordinates: [number, number] };
   status?: boolean;
   createdAt?: Date;

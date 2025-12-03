@@ -2,6 +2,7 @@ import { socketErrorHandler } from "@/utils/socketErrorHandler.js";
 import { Server, type Socket } from "socket.io";
 import http from "http";
 import { notifySession } from "./notifySession.js";
+import { businessJoin, employeeJoinPost, employeeJoinShipper } from "./socketPost.js";
 
 
 export let io: Server;
@@ -34,6 +35,9 @@ export const initSocket = (server: http.Server<typeof http.IncomingMessage, type
 
         console.log(`New client connected: ${socket.id}`);
         notifySession(io, socket)
+        employeeJoinPost(io, socket)
+        employeeJoinShipper(io, socket)
+        businessJoin(io, socket)
         // socket.on("reconnect", socketErrorHandler(socket, (payload) => {
         //     const { creator } = SchemaSocketComment.parse(payload)
         //     socket.join(creator);

@@ -422,37 +422,132 @@ export const resetPasswordInternal = catchError(async (req, res) => {
     });
 })
 
-// export const changePassword = catchError(async (req, res) => {
-//     const { token, newPassword } = req.body;
+export const changePasswordInternal = catchError(async (req, res) => {
+    const { newPassword, currentPassword } = req.body
 
-//     if (!token || !newPassword) {
-//         return res.status(400).json({
-//             message: "Thiếu email hoặc mật khẩu mới"
-//         });
-//     }
+    const employeeId = (req as any).user.id
+    const sessionId = (req as any).user.sessionId
+
+    const employee = await EmployeeModel.findById(employeeId).populate("role", "name")
+
+    // Verify
+    if (!employee) {
+        return res.status(404).json({
+            message: "Không tìm thầy tài khoản"
+        })
+    }
+
+    if (!employee.status) {
+        return res.status(403).json({
+            message: "Tài khoản của bạn đã bị khóa"
+        })
+    }
+
+    const roleName = (employee.role as any)?.name;
+    if (!roleName || roleName === 'business') {
+        return res.status(403).json({
+            message: "Forbidden, Bạn không có quyền để sử dụng tính năng này"
+        })
+    }
+
+    // Kiểm tra mật khẩu hiện tại
+    const matchCurrentPassword = await employee.isPasswordMatch(currentPassword)
+    if (!matchCurrentPassword) {
+        return res.status(400).json({
+            message: "Mật khẩu hiện tại không chính xác"
+        })
+    }
+
+    // Cập nhật mật khẩu mới
+    employee.passwordHash = newPassword
+    await employee.save()
+
+    // toàn bộ session sẽ bị logout ngoại trừ session hiện tại
+
+    await SessionModel.updateMany(
+        {
+            employee: employeeId,
+            _id: { $ne: sessionId },      // loại session hiện tại
+        },
+        {
+            $set: { isActive: false, refreshTokenExp: null, refreshTokenHash: null }
+        }
+    )
+
+    return res.status(200).json({
+        message: "Đổi mật khẩu thành công. Tất cả thiết bị khác đã bị đăng xuất."
+    });
+
+})
 
 
-//     // Tìm user theo token & chưa hết hạn
-//     const employee = await EmployeeModel.findOne({ email });
+export const verifyEmailInternal = catchError(async (req, res) => {
+    const inputEmail = SchemaInputInternal.pick({ email: true })
+    const { email } = inputEmail.parse(req.body)
 
-//     if (!employee) {
-//         return res.status(400).json({
-//             message: "Token không hợp lệ hoặc đã hết hạn"
-//         });
-//     }
+    const employeeId = (req as any).user.id
+    const employee = await EmployeeModel.findById(employeeId).populate("role", "name")
+    // Verify
+    if (!employee) {
+        return res.status(404).json({
+            message: "Không tìm thầy tài khoản"
+        })
+    }
 
-//     // Xóa token
-//     employee.password_reset_token = undefined;
-//     employee.password_reset_expires = undefined;
-//     employee.passwordHash = newPassword
+    if (employee.email !== email) {
+        return res.status(400).json({
+            message: "Email không phù hợp với tài khoản này"
+        })
+    }
 
-//     // Lưu DB
-//     await employee.save();
+    return res.status(204).json()
 
-//     // Logout toàn bộ session (xoá refreshToken)
-//     await SessionModel.findOneAndDelete({ business: employee.id })
+})
 
-//     return res.status(200).json({
-//         message: "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại."
-//     });
-// })
+
+export const updateNewPasswordInternal = catchError(async (req, res) => {
+    const inputPassword = SchemaInputInternal.pick({ password: true })
+    const { password } = inputPassword.parse(req.body)
+
+    const employeeId = (req as any).user.id
+    const sessionId = (req as any).user.sessionId
+
+    const employee = await EmployeeModel.findById(employeeId).populate("role", "name")
+
+    // Verify
+    if (!employee) {
+        return res.status(404).json({
+            message: "Không tìm thầy tài khoản"
+        })
+    }
+
+    if (!employee.status) {
+        return res.status(403).json({
+            message: "Tài khoản của bạn đã bị khóa"
+        })
+    }
+
+    const roleName = (employee.role as any)?.name;
+    if (!roleName || roleName === 'business') {
+        return res.status(403).json({
+            message: "Forbidden, Bạn không có quyền để sử dụng tính năng này"
+        })
+    }
+
+    employee.passwordHash = password
+    await employee.save()
+
+    await SessionModel.updateMany(
+        {
+            employee: employeeId,
+            _id: { $ne: sessionId },      // loại session hiện tại
+        },
+        {
+            $set: { isActive: false, refreshTokenExp: null, refreshTokenHash: null }
+        }
+    )
+
+    return res.status(200).json({
+        message: "Đổi mật khẩu thành công. Tất cả thiết bị khác đã bị đăng xuất."
+    });
+})

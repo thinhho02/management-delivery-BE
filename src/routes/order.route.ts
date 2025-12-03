@@ -1,0 +1,30 @@
+import { arrangeTransportPickup, bulkCancelOrders, bulkPrintOrdersPdf, createOrder, getOrderDetailByBusiness, getOrdersByBusiness, getOrdersForDeliveryOffice, getOrdersForPickupOffice, scanShipment } from "@/controllers/order.controller.js";
+import { verifyAccessToken } from "@/middlewares/verifyAccessToken.js";
+import { Router } from "express";
+
+const routeOrder = Router()
+
+// /order
+
+routeOrder.post("/create", verifyAccessToken, createOrder)
+routeOrder.get("/business", verifyAccessToken, getOrdersByBusiness)
+routeOrder.get("/business/:orderId", verifyAccessToken, getOrderDetailByBusiness)
+// hủy đơn hàng
+routeOrder.post("/bulk-cancel", verifyAccessToken, bulkCancelOrders)
+
+// in đơn
+routeOrder.post("/print-bulk", verifyAccessToken, bulkPrintOrdersPdf)
+
+
+
+
+routeOrder.get("/pickup-office/:pickupOfficeId", verifyAccessToken, getOrdersForPickupOffice)
+routeOrder.get("/delivery-office/:pickupOfficeId", verifyAccessToken, getOrdersForDeliveryOffice)
+
+
+
+routeOrder.put("/pickup-office/arrange-transport", verifyAccessToken, arrangeTransportPickup)
+
+routeOrder.put("/office/qr-scan", verifyAccessToken, scanShipment)
+
+export default routeOrder

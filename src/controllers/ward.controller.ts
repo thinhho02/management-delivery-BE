@@ -1,7 +1,6 @@
 import Province from "@/models/province.js";
 import ShipperZone from "@/models/shipperZone.js";
 import Ward from "@/models/ward.js";
-import { createTileService, updateTileMapBox } from "@/services/mapbox.service.js";
 import { ZoneSchemaZod } from "@/types/zoneType.js";
 import catchError from "@/utils/catchError.js";
 import generateSlug from "@/utils/generateSlug.js";
@@ -10,7 +9,13 @@ import type { AnyBulkWriteOperation } from "mongoose";
 
 
 export const getListWard = catchError(async (req, res) => {
-    const wards = await Ward.find().select('_id code name provinceId tileset geometry').populate("provinceId", "code name -_id").sort({ name: 1 }).lean()
+    const wards = await Ward.find().select('_id code name provinceId geometry').populate("provinceId", "code name -_id").sort({ name: 1 }).lean()
+
+    return res.status(200).json(wards)
+})
+
+export const getListWardNoGeo = catchError(async (req, res) => {
+    const wards = await Ward.find().select('_id code name provinceId').populate("provinceId", "code name -_id").sort({ name: 1 }).lean()
 
     return res.status(200).json(wards)
 })
@@ -28,14 +33,26 @@ export const getWardById = catchError(async (req, res) => {
     return res.status(200).json(ward)
 })
 
+
+export const getListWardByProvince = catchError(async (req, res) => {
+    const { provinceId } = req.params
+
+    if (!provinceId) {
+        return res.status(400).json({ message: "Invalida Code or not exist" })
+    }
+    const wardInProvince = await Ward.find({ provinceId }).select('_id code name').sort({ name: 1 }).lean()
+
+    return res.status(200).json(wardInProvince)
+})
+
 export const getListWardByCode = catchError(async (req, res) => {
     const zonePick = ZoneSchemaZod.pick({ code: true })
     const { code } = zonePick.parse(req.body)
-    const ward = await Ward.findOne({ code }).select('_id code name provinceId tileset').lean()
+    const ward = await Ward.findOne({ code }).select('_id code name provinceId').lean()
     if (!ward || !ward._id) {
         return res.status(400).json({ message: "Invalida Code or not exist" })
     }
-    const shipperZoneInWard = await ShipperZone.find({ wardId: ward._id }).select('_id code name wardId tileset geometry').sort({ name: 1 }).lean()
+    const shipperZoneInWard = await ShipperZone.find({ wardId: ward._id }).select('_id code name wardId geometry').sort({ name: 1 }).lean()
 
     return res.status(200).json({
         ...ward,
@@ -70,15 +87,7 @@ export const createWard = catchError(async (req, res) => {
     if (invalidFeature)
         return res.status(400).json({ message: "Invalid GeoJSON: each feature must have properties.ma_tinh and properties.ma_xa and geometry" })
 
-    // Mapbox tileset job
-    const MAPBOX_USERNAME = process.env.MAPBOX_USERNAME;
-    const tilesetId = `${MAPBOX_USERNAME}.${zone}`;
 
-    const existedTileset = await Ward.exists({ tileset: tilesetId });
-
-    const jobId = existedTileset
-        ? await updateTileMapBox(json.features, zone, file, tilesetId)
-        : await createTileService(json.features, zone, file, tilesetId);
 
 
     const provinceCodes: string[] = Array.from(
@@ -112,7 +121,6 @@ export const createWard = catchError(async (req, res) => {
                         name: newName,
                         slug,
                         provinceId,
-                        tileset: tilesetId,
                         geometry: f.geometry,
                     },
                 },
@@ -129,26 +137,9 @@ export const createWard = catchError(async (req, res) => {
         }
     }
     fs.unlinkSync(filePath)
-    // old
-    // const wardsToInsert = [];
-    // const province = await Province.findOne({ code: json.feature[0].properties.ma_tinh })
-    // for (const feature of json.features) {
-    //     const createSlug = await generateSlug(Ward, feature.properties.ten_xa)
-    //     wardsToInsert.push({
-    //         code: feature.properties.ma_xa,
-    //         name: createSlug.newName,
-    //         slug: createSlug.slug,
-    //         provinceId: province?.id,
-    //         tileset: tilesetId,
-    //         geometry: feature.geometry
 
-    //     })
-    // }
-    // await Ward.insertMany(wardsToInsert, { ordered: false });
     return res.status(200).json({
-        message: "Add data tileset ward success",
+        message: "Add data ward success",
         count: ops.length,
-        tileset: tilesetId,
-        jobId
     })
 })

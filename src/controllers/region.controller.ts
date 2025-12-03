@@ -1,6 +1,5 @@
 import Province from "@/models/province.js"
 import Region from "@/models/region.js"
-import { createTileService, updateTileMapBox } from "@/services/mapbox.service.js"
 import { ZoneSchemaZod } from "@/types/zoneType.js"
 import catchError from "@/utils/catchError.js"
 import generateSlug from "@/utils/generateSlug.js"
@@ -9,7 +8,7 @@ import { fs } from "memfs"
 
 
 export const getListRegion = catchError(async (req, res) => {
-    const regions = await Region.find().select('_id code name tileset geometry').sort({ name: 1 }).lean()
+    const regions = await Region.find().select('_id code name geometry').sort({ name: 1 }).lean()
 
     return res.status(200).json(regions)
 })
@@ -31,11 +30,11 @@ export const getRegionById = catchError(async (req, res) => {
 export const getListRegionByCode = catchError(async (req, res) => {
     const zonePick = ZoneSchemaZod.pick({ code: true })
     const { code } = zonePick.parse(req.body)
-    const region = await Region.findOne({ code }).select('_id code name tileset').lean()
+    const region = await Region.findOne({ code }).select('_id code name').lean()
     if (!region || !region._id) {
         return res.status(400).json({ message: "Invalida Code or not exist" })
     }
-    const provinceInRegion = await Province.find({ regionId: region._id }).select('_id code name regionId tileset geometry').sort({ name: 1 }).lean()
+    const provinceInRegion = await Province.find({ regionId: region._id }).select('_id code name regionId geometry').sort({ name: 1 }).lean()
 
     return res.status(200).json({
         ...region,
@@ -71,15 +70,7 @@ export const createRegion = catchError(async (req, res) => {
     if (invalidFeature)
         return res.status(400).json({ message: "Invalid GeoJSON: feature must have properties.ma_vung and geometry" })
 
-    // Mapbox tileset job
-    const MAPBOX_USERNAME = process.env.MAPBOX_USERNAME;
-    const tilesetId = `${MAPBOX_USERNAME}.${zone}`;
-
-    const existedTileset = await Region.exists({ tileset: tilesetId });
-
-    const jobId = existedTileset
-        ? await updateTileMapBox(json.features, zone, file, tilesetId)
-        : await createTileService(json.features, zone, file, tilesetId);
+    
 
     // const ops: AnyBulkWriteOperation[] = [];
 
@@ -96,7 +87,6 @@ export const createRegion = catchError(async (req, res) => {
                 code,
                 name: newName,
                 slug,
-                tileset: tilesetId,
                 geometry: geometry
             }
         },
@@ -104,7 +94,5 @@ export const createRegion = catchError(async (req, res) => {
     );
     return res.status(200).json({
         message: "Add data tileset ward success",
-        tileset: tilesetId,
-        jobId
     })
 })

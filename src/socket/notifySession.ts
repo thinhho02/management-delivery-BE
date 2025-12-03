@@ -10,7 +10,8 @@ export const notifySession = (io: Server, socket: Socket) => {
     socket.on("join:room_session", socketErrorHandler(socket, (payload) => {
         const pickSessionId = SchemaSocketNotify.pick({ sessionId: true })
         const { sessionId } = pickSessionId.parse(payload)
-        socket.join(sessionId)
+        const roomName = `session:${sessionId}`;
+        socket.join(roomName)
         console.log(`Socket ${socket.id} joined room ${sessionId}`);
         console.log(io.sockets.adapter.rooms);
     }))

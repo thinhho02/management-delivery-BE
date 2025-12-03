@@ -5,7 +5,6 @@ export interface IProvince extends Document {
     code?: string;
     name?: string;
     slug?: string;
-    tileset?: string;
     regionId?: mongoose.Types.ObjectId;
     geometry?: any;
     createdAt?: Date;
@@ -15,7 +14,6 @@ const ProvinceSchema = new Schema<IProvince>({
     code: { type: String, unique: true },
     name: String,
     slug: String,
-    tileset: String,
     regionId: { type: Schema.Types.ObjectId, ref: "Region" },
     geometry: {
         type: { type: String, enum: ["Polygon", "MultiPolygon"] },

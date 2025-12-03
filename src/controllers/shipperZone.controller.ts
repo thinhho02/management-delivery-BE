@@ -1,6 +1,6 @@
+import PostOfficeModel from "@/models/postOffice.js";
 import ShipperZone from "@/models/shipperZone.js";
 import Ward from "@/models/ward.js";
-import { createTileService, updateTileMapBox } from "@/services/mapbox.service.js";
 import { ZoneSchemaZod } from "@/types/zoneType.js";
 import catchError from "@/utils/catchError.js";
 import generateSlug from "@/utils/generateSlug.js";
@@ -9,9 +9,24 @@ import type { AnyBulkWriteOperation } from "mongoose";
 
 
 export const getListShipperZone = catchError(async (req, res) => {
-    const shipeerZones = await ShipperZone.find().select('_id code name wardId tileset geometry').populate("wardId", "code name -_id").sort({ name: 1 }).lean()
+    const shipeerZones = await ShipperZone.find().select('_id code name wardId geometry').populate("wardId", "code name -_id").sort({ name: 1 }).lean()
 
     return res.status(200).json(shipeerZones)
+})
+
+export const getListShipperZoneByPostZone = catchError(async (req, res) => {
+    const { postId } = req.params
+
+    const post = await PostOfficeModel.findById(postId)
+
+    if (!post) {
+        return res.status(400).json({ message: "Không tìm thấy bưu cục" })
+    }
+
+    const shipperZone = await ShipperZone.find({ wardId: post.wardId }).select('_id code name').sort({ name: 1 }).lean()
+
+
+    return res.status(200).json(shipperZone)
 })
 
 
@@ -41,16 +56,6 @@ export const createShipperZone = catchError(async (req, res) => {
     const invalidFeature = json.features.find((f: any) => !f?.properties || !f.properties?.ma_xa || !f.properties?.ma_sz || !f.geometry);
     if (invalidFeature)
         return res.status(400).json({ message: "Invalid GeoJSON: each feature must have properties.ma_xa and properties.ma_sz and geometry" })
-
-    // Mapbox tileset job
-    const MAPBOX_USERNAME = process.env.MAPBOX_USERNAME;
-    const tilesetId = `${MAPBOX_USERNAME}.${zone}`;
-
-    const existedTileset = await ShipperZone.exists({ tileset: tilesetId });
-
-    const jobId = existedTileset
-        ? await updateTileMapBox(json.features, zone, file, tilesetId)
-        : await createTileService(json.features, zone, file, tilesetId);
 
 
     const wardCodes: string[] = Array.from(
@@ -84,7 +89,6 @@ export const createShipperZone = catchError(async (req, res) => {
                         name: newName,
                         slug,
                         wardId,
-                        tileset: tilesetId,
                         geometry: f.geometry,
                     },
                 },
@@ -101,26 +105,9 @@ export const createShipperZone = catchError(async (req, res) => {
         }
     }
     fs.unlinkSync(filePath)
-    // old
-    // const wardsToInsert = [];
-    // const province = await Province.findOne({ code: json.feature[0].properties.ma_tinh })
-    // for (const feature of json.features) {
-    //     const createSlug = await generateSlug(Ward, feature.properties.ten_xa)
-    //     wardsToInsert.push({
-    //         code: feature.properties.ma_xa,
-    //         name: createSlug.newName,
-    //         slug: createSlug.slug,
-    //         provinceId: province?.id,
-    //         tileset: tilesetId,
-    //         geometry: feature.geometry
 
-    //     })
-    // }
-    // await Ward.insertMany(wardsToInsert, { ordered: false });
     return res.status(200).json({
-        message: "Add data tileset ward success",
+        message: "Add data ward success",
         count: ops.length,
-        tileset: tilesetId,
-        jobId
     })
 })

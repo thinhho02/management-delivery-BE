@@ -4,7 +4,6 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IShipperZone extends Document {
   code?: string;
   name?: string;
-  tileset?: string;
   slug?: string;
   wardId?: mongoose.Types.ObjectId;
   geometry?: any; // GeoJSON Polygon
@@ -16,7 +15,6 @@ const ShipperZoneSchema = new Schema<IShipperZone>(
   {
     code: { type: String, unique: true },
     name: String,
-    tileset: String,
     slug: String,
     wardId: { type: Schema.Types.ObjectId, ref: "Ward" },
     geometry: {

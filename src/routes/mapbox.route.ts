@@ -1,8 +1,8 @@
-import { getListTilesets, getStatusJob } from "@/controllers/mapbox.controller.js";
-import { createProvince, getListProvince, getListProvinceByCode, getProvinceById } from "@/controllers/province.controller.js";
+import { getListTilesets } from "@/controllers/mapbox.controller.js";
+import { createProvince, getListProvince, getListProvinceByCode, getListProvinceNoGeo, getProvinceById } from "@/controllers/province.controller.js";
 import { createRegion, getListRegion, getListRegionByCode, getRegionById } from "@/controllers/region.controller.js";
-import { createShipperZone, getListShipperZone } from "@/controllers/shipperZone.controller.js";
-import { createWard, getListWard, getListWardByCode, getWardById } from "@/controllers/ward.controller.js";
+import { createShipperZone, getListShipperZone, getListShipperZoneByPostZone } from "@/controllers/shipperZone.controller.js";
+import { createWard, getListWard, getListWardByCode, getListWardByProvince, getListWardNoGeo, getWardById } from "@/controllers/ward.controller.js";
 
 
 import { upload } from "@/utils/multer.js";
@@ -13,7 +13,6 @@ const routeMapBox = Router()
 
 // service Mapbox
 routeMapBox.get("/list-tileset", getListTilesets)
-routeMapBox.get("/job/:tilesetId/status/:jobId", getStatusJob)
 
 // Region
 routeMapBox.get("/region/list", getListRegion)
@@ -24,6 +23,7 @@ routeMapBox.post("/region/import", upload.single("fileUpload"), createRegion)
 
 // Province
 routeMapBox.get("/province/list", getListProvince)
+routeMapBox.get("/province/list/no-geo", getListProvinceNoGeo)
 routeMapBox.get("/province/:zoneId", getProvinceById)
 routeMapBox.get("/province/:code", getListProvinceByCode)
 routeMapBox.post("/province/import", upload.single("fileUpload"), createProvince)
@@ -31,12 +31,15 @@ routeMapBox.post("/province/import", upload.single("fileUpload"), createProvince
 
 // Ward
 routeMapBox.get("/ward/list", getListWard)
+routeMapBox.get("/ward/list/no-geo", getListWardNoGeo)
+routeMapBox.get("/ward/list/:provinceId", getListWardByProvince)
 routeMapBox.get("/ward/:zoneId", getWardById)
-routeMapBox.get("/ward/:code", getListWardByCode)
+routeMapBox.get("/ward/code/:code", getListWardByCode)
 routeMapBox.post("/ward/import", upload.single("fileUpload"), createWard)
 
 // Shipperzone
 routeMapBox.get("/shipperZone/list", getListShipperZone)
+routeMapBox.get("/shipperZone/:postId", getListShipperZoneByPostZone)
 // routeMapBox.get("/shipper-zone/:code")
 routeMapBox.post("/shipperZone/import", upload.single("fileUpload"), createShipperZone)
 

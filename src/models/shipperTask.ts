@@ -41,5 +41,5 @@ const ShipperTaskSchema = new Schema<IShipperTask>(
 
 ShipperTaskSchema.index({ shipperDetailId: 1, status: 1, assignedAt: -1 });
 
-const ShipperTaskModel = mongoose.models.ShipperTask || mongoose.model<IShipperTask>("ShipperTask", ShipperTaskSchema);
+const ShipperTaskModel = mongoose.model<IShipperTask>("ShipperTask", ShipperTaskSchema);
 export default ShipperTaskModel;

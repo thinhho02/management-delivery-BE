@@ -31,14 +31,18 @@ export type PostOfficeType = z.infer<typeof PostOfficeSchemaZ>
 export const PostOfficeQuery = z.object({
     type: z.enum(["sorting_center", "distribution_hub", "delivery_office"]),
     page: z.string().default("1"),
-    limit: z.string().default("20"), // mặc định 20
+    limit: z.string().default("10"), // mặc định 10
 });
 
 // verify Acctoken isAdmin
 export const getZonebyType = catchError(async (req, res) => {
     const inputType = PostOfficeSchemaZ.pick({ type: true })
     const { type } = inputType.parse(req.params)
-
+    if (!type) {
+        return res.status(400).json({
+            message: "Không tìm thấy loại bưu cục"
+        })
+    }
 
     // check type
     const zones = type === 'sorting_center'
@@ -96,6 +100,31 @@ export const createNewPost = catchError(async (req, res) => {
     })
 })
 
+export const getPostByType = catchError(async (req, res) => {
+    const inputType = PostOfficeSchemaZ.pick({ type: true })
+    const { type } = inputType.parse(req.params)
+
+    if (!type) {
+        return res.status(400).json({
+            message: "Không tìm thấy loại bưu cục"
+        })
+    }
+    const zoneField = type === 'sorting_center'
+        ? "regionId"
+        : type === "distribution_hub"
+            ? "provinceId"
+            : "wardId"
+
+    const posts = await PostOfficeModel.find({ type }).populate({ path: zoneField, select: "_id name code" })
+    if (posts.length < 1) {
+        return res.status(400).json({
+            message: "Không tìm thấy bưu cục nào"
+        })
+    }
+
+    return res.status(200).json(posts)
+})
+
 export const getPostById = catchError(async (req, res) => {
     const { postId } = req.params
 
@@ -113,7 +142,7 @@ export const getPostById = catchError(async (req, res) => {
 
     await post.populate([
         { path: zoneField, select: "_id name code geometry" },
-        { path: "parentId", select: "_id code name type" }
+        { path: "parentId", select: "_id code name type address" }
     ])
 
     return res.status(200).json(post)
@@ -125,7 +154,7 @@ export const getPostOffices = catchError(async (req, res) => {
     const query = PostOfficeQuery.parse(req.query);
 
     const page = parseInt(query.page) || 1;
-    const limit = parseInt(query.limit) || 20;
+    const limit = parseInt(query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const filter = { type: query.type };
@@ -166,13 +195,13 @@ export const updatePost = catchError(async (req, res) => {
     const payload = PostOfficeSchemaZ.parse(req.body)
     const { postId } = req.params
     console.log(payload)
-    
+
     const location = payload.location
         ? {
             type: "Point",
             coordinates: payload.location
         } : undefined
-    
+
     if (!postId) {
         return res.status(400).json({
             message: "Bad Request, Không tìm thấy ID"
