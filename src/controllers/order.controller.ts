@@ -6,7 +6,8 @@ import catchError from "@/utils/catchError.js";
 import mongoose from "mongoose";
 import z from "zod";
 import QRCode from "qrcode";
-import puppeteer from "puppeteer";
+import Chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 import ShipperZone from "@/models/shipperZone.js";
 import ShipperDetailModel from "@/models/shipperDetail.js";
 import ShipperTaskModel from "@/models/shipperTask.js";
@@ -503,9 +504,12 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
 
     // Puppeteer sinh PDF
 
+
     const browser = await puppeteer.launch({
+        args: Chromium.args,
+        defaultViewport: Chromium.defaultViewport,
+        executablePath: await Chromium.executablePath(),
         headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
