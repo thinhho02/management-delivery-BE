@@ -738,7 +738,7 @@ export function hasOfficeScanned(
     // Office-related events
     const isOfficeEvent = ["arrival", "departure", "returned"].includes(eventType);
     if (isOfficeEvent) {
-      return ev.eventType === eventType && ev.officeId?.toString() === whoScan;
+      return ev.eventType === eventType && ev.officeId?._id.toString() === whoScan;
     }
 
     // Shipper-related events
@@ -793,7 +793,7 @@ export function validateOfficeRoute(order: IOrder, officeId: string, eventType: 
   // Lấy lastEvent để xác định step hiện tại của tuyến
   // -------------------------------
   const lastEvent = order.shipment.events.at(-1);
-  const lastOffice = lastEvent?.officeId?.toString();
+  const lastOffice = lastEvent?.officeId?._id.toString();
 
   let currentStepIndex = 0;
 
