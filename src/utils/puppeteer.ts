@@ -6,12 +6,12 @@ import puppeteerCore from "puppeteer-core";
 
 export async function launchBrowser() {
     // Nếu chạy local
-    if (process.env.NODE_ENV !== "production") {
+    // if (process.env.NODE_ENV !== "production") {
         return await puppeteer.launch();
-    }
+    // }
 
     // Nếu chạy trên production
-    return await puppeteerCore.launch();
+    // return await puppeteerCore.launch();
     // return await puppeteerCore.launch({
     //     args: [
     //         ...Chromium.args,
