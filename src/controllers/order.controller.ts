@@ -508,7 +508,7 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
 
 
     const browser = await launchBrowser()
-
+    console.log(browser)
     const page = await browser.newPage();
     await page.setContent(buildPdf, { waitUntil: "networkidle0" });
 
