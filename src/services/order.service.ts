@@ -728,6 +728,32 @@ export async function generateRoutePlan({
 //   return { ok: true };
 // }
 
+export function hasOfficeScanned(
+  order: IOrder,
+  whoScan: string,
+  eventType: ShipmentEventType
+) {
+  return order.shipment.events.some((ev: any) => {
+
+    // Office-related events
+    const isOfficeEvent = ["arrival", "departure", "returned"].includes(eventType);
+    if (isOfficeEvent) {
+      return ev.eventType === eventType && ev.officeId?.toString() === whoScan;
+    }
+
+    // Shipper-related events
+    const isShipperEvent = ["pickup", "delivery_attempt", "delivered"].includes(eventType);
+    if (isShipperEvent) {
+      // delivery_attempt có thể nhiều lần => không chặn
+      if (eventType === "delivery_attempt") return false;
+      return ev.eventType === eventType && ev.shipperDetailId?.toString() === whoScan;
+    }
+
+    // System event — always block duplicates
+    return ev.eventType === eventType;
+  });
+}
+
 export function validateOfficeRoute(order: IOrder, officeId: string, eventType: ShipmentEventType) {
   const routePlan = order.routePlan;
 

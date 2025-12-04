@@ -1,7 +1,7 @@
 import OrderModel from "@/models/order.js";
 import PostOfficeModel from "@/models/postOffice.js";
 import UserModel from "@/models/user.js";
-import { buildLabelHtml, buildValueHtml, generateRoutePlan, getBestPostOffice, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
+import { buildLabelHtml, buildValueHtml, generateRoutePlan, getBestPostOffice, hasOfficeScanned, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
 import catchError from "@/utils/catchError.js";
 import mongoose from "mongoose";
 import z from "zod";
@@ -1046,13 +1046,18 @@ export const scanShipment = catchError(async (req, res) => {
         .populate("shipment.events.officeId");
 
     if (!order) {
-        return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+        return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
     // VALIDATE OFFICE & ROUTE STEP
     const isValid = validateOfficeRoute(order, officeId, eventType);
     if (!isValid.ok) {
-        return res.status(400).json({ success: false, message: isValid.error });
+        return res.status(400).json({ message: isValid.error });
+    }
+
+    const checkScan = hasOfficeScanned(order, officeId, eventType)
+    if (checkScan) {
+        return res.status(404).json({ message: "Đơn hàng đã cập nhật" });
     }
 
     const office = await PostOfficeModel.findById(officeId).lean()
@@ -1075,7 +1080,7 @@ export const scanShipment = catchError(async (req, res) => {
 
     await order.save();
 
-    return res.json({
+    return res.status(200).json({
         message: "Cập nhật trạng thái thành công",
         order: order,
     });
