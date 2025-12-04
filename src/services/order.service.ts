@@ -756,91 +756,220 @@ export function hasOfficeScanned(
   });
 }
 
-export function validateOfficeRoute(order: IOrder, officeId: string, eventType: ShipmentEventType) {
+// export function validateOfficeRoute(order: IOrder, officeId: string, eventType: ShipmentEventType) {
+//   const routePlan = order.routePlan;
+
+//   if (!routePlan || !routePlan.length) {
+//     return { ok: false, error: "Đơn hàng không có tuyến vận chuyển" };
+//   }
+
+
+//   // -------------------------------
+//   // Tìm step nào chứa officeId
+//   // -------------------------------
+//   const stepIndex = routePlan.findIndex(
+//     (step) =>
+//       step.from?._id?.toString() === officeId ||
+//       step.to?._id?.toString() === officeId
+//   );
+
+//   if (stepIndex === -1) {
+//     return { ok: false, error: "Bưu cục không thuộc tuyến vận chuyển của đơn hàng" };
+//   }
+
+//   const step = routePlan[stepIndex];
+
+//   // -------------------------------
+//   // eventType của shipper có thể SKIP
+//   // -------------------------------
+//   const shipperSkipEvents: ShipmentEventType[] = [
+//     "waiting_pickup",
+//     "pickup"
+//   ];
+
+//   if (shipperSkipEvents.includes(eventType)) {
+//     return { ok: true }; // shipper không bị validate tuyến
+//   }
+
+//   // -------------------------------
+//   // Lấy lastEvent để xác định step hiện tại của tuyến
+//   // -------------------------------
+//   const lastEvent = order.shipment.events.at(-1);
+//   const lastOffice = lastEvent?.officeId?._id.toString();
+
+//   let currentStepIndex = 0;
+
+//   if (lastOffice) {
+//     const found = routePlan.findIndex(
+//       s => s.to?._id?.toString() === lastOffice
+//     );
+
+//     if (found !== -1) currentStepIndex = found;
+//   }
+
+//   const currentStep = routePlan[currentStepIndex];
+
+//   // -------------------------------
+//   // Validate ARRIVAL
+//   // -------------------------------
+//   if (eventType === "arrival" && stepIndex === 0) {
+//     return { ok: true };
+//   }
+
+
+//   if (eventType === "arrival") {
+//     if (step && step.to._id.toString() !== officeId) {
+//       return { ok: false, error: "Không đúng tuyến vận chuyển" };
+//     }
+
+//     if (stepIndex < currentStepIndex) {
+//       return { ok: false, error: "Sai thứ tự tuyến" };
+//     }
+
+//     return { ok: true };
+//   }
+
+//   // -------------------------------
+//   // Validate DEPARTURE (rời đúng bưu cục)
+//   // -------------------------------
+//   if (eventType === "departure") {
+//     if (currentStep && currentStep.from._id.toString() !== officeId) {
+//       return { ok: false, error: "Không đúng tuyến vận chuyển" };
+//     }
+//     return { ok: true };
+//   }
+
+//   // -------------------------------
+//   // Các event khác luôn hợp lệ
+//   // -------------------------------
+//   return { ok: true };
+// }
+
+export function validateOfficeRoute(
+  order: IOrder,
+  officeId: string,
+  eventType: ShipmentEventType
+) {
   const routePlan = order.routePlan;
+  const officeIdStr = officeId.toString();
 
   if (!routePlan || !routePlan.length) {
     return { ok: false, error: "Đơn hàng không có tuyến vận chuyển" };
   }
 
+  // 0) Event không phải của bưu cục -> không check
+  if (eventType !== "arrival" && eventType !== "departure") {
+    return { ok: true };
+  }
 
-  // -------------------------------
-  // Tìm step nào chứa officeId
-  // -------------------------------
-  const stepIndex = routePlan.findIndex(
+  // 1) Office phải nằm trong routePlan
+  const belongsToRoute = routePlan.some(
     (step) =>
-      step.from?._id?.toString() === officeId ||
-      step.to?._id?.toString() === officeId
+      step.from?._id?.toString() === officeIdStr ||
+      step.to?._id?.toString() === officeIdStr
   );
 
-  if (stepIndex === -1) {
+  if (!belongsToRoute) {
     return { ok: false, error: "Bưu cục không thuộc tuyến vận chuyển của đơn hàng" };
   }
 
-  const step = routePlan[stepIndex];
+  const events = order.shipment?.events || [];
 
-  // -------------------------------
-  // eventType của shipper có thể SKIP
-  // -------------------------------
-  const shipperSkipEvents: ShipmentEventType[] = [
-    "waiting_pickup",
-    "pickup"
-  ];
+  // 2) Tính step đã hoàn thành cuối cùng = arrival tại step.to
+  let lastCompletedStepIndex = -1;
 
-  if (shipperSkipEvents.includes(eventType)) {
-    return { ok: true }; // shipper không bị validate tuyến
-  }
+  for (const ev of events) {
+    if (ev.eventType !== "arrival" || !ev.officeId) continue;
+    const evOfficeId = ev.officeId.toString();
 
-  // -------------------------------
-  // Lấy lastEvent để xác định step hiện tại của tuyến
-  // -------------------------------
-  const lastEvent = order.shipment.events.at(-1);
-  const lastOffice = lastEvent?.officeId?._id.toString();
-
-  let currentStepIndex = 0;
-
-  if (lastOffice) {
-    const found = routePlan.findIndex(
-      s => s.to?._id?.toString() === lastOffice
+    const idx = routePlan.findIndex(
+      (step) => step.to?._id?.toString() === evOfficeId
     );
-
-    if (found !== -1) currentStepIndex = found;
+    if (idx > lastCompletedStepIndex) {
+      lastCompletedStepIndex = idx;
+    }
   }
 
-  const currentStep = routePlan[currentStepIndex];
+  const firstStep = routePlan[0];
+  const lastStepIndex = routePlan.length - 1;
 
-  // -------------------------------
-  // Validate ARRIVAL
-  // -------------------------------
-  if (eventType === "arrival" && stepIndex === 0) {
-    return { ok: true };
-  }
-
-
+  // =========================
+  // ARRIVAL
+  // =========================
   if (eventType === "arrival") {
-    if (step && step.to._id.toString() !== officeId) {
-      return { ok: false, error: "Không đúng tuyến vận chuyển" };
+    // 2.1) Chưa có step nào hoàn thành -> arrival đầu tiên
+    if (lastCompletedStepIndex === -1) {
+      // Arrival đầu tiên PHẢI ở pickupOffice (from của step 0)
+      if (firstStep && firstStep.from?._id?.toString() !== officeIdStr) {
+        return {
+          ok: false,
+          error: "Đơn hàng phải được nhập kho tại bưu cục nhận đầu tiên theo tuyến"
+        };
+      }
+      return { ok: true };
     }
 
-    if (stepIndex < currentStepIndex) {
-      return { ok: false, error: "Sai thứ tự tuyến" };
+    // 2.2) Đã hoàn thành một số step -> arrival tiếp theo
+    const nextStepIndex = lastCompletedStepIndex + 1;
+    if (nextStepIndex > lastStepIndex) {
+      return {
+        ok: false,
+        error: "Đơn hàng đã hoàn tất tuyến, không thể nhập kho thêm"
+      };
+    }
+
+    const nextStep = routePlan[nextStepIndex];
+    if (nextStep && nextStep.to?._id?.toString() !== officeIdStr) {
+      return {
+        ok: false,
+        error: "Không đúng bưu cục nhận hàng tiếp theo theo tuyến"
+      };
     }
 
     return { ok: true };
   }
 
-  // -------------------------------
-  // Validate DEPARTURE (rời đúng bưu cục)
-  // -------------------------------
+  // =========================
+  // DEPARTURE
+  // =========================
   if (eventType === "departure") {
-    if (currentStep && currentStep.to._id.toString() !== officeId) {
-      return { ok: false, error: "Không đúng tuyến vận chuyển" };
+    // 3.1) Chưa có arrival step nào -> xuất từ pickupOffice
+    if (lastCompletedStepIndex === -1) {
+      if (firstStep && firstStep.from?._id?.toString() !== officeIdStr) {
+        return {
+          ok: false,
+          error: "Không đúng bưu cục xuất kho đầu tiên theo tuyến"
+        };
+      }
+      return { ok: true };
     }
+
+    const nextStepIndex = lastCompletedStepIndex + 1;
+
+    // 3.2) Nếu tất cả step đã hoàn thành (đã arrival bưu cục cuối)
+    if (nextStepIndex > lastStepIndex) {
+      // Cho phép xuất kho từ bưu cục cuối (giao cho shipper)
+      const finalOfficeId = routePlan[lastStepIndex]?.to?._id?.toString();
+      if (finalOfficeId !== officeIdStr) {
+        return {
+          ok: false,
+          error: "Không đúng bưu cục xuất kho cuối tuyến"
+        };
+      }
+      return { ok: true };
+    }
+
+    // 3.3) Đang ở giữa tuyến -> departure phải từ from của step kế tiếp
+    const nextStep = routePlan[nextStepIndex];
+    if (nextStep && nextStep.from?._id?.toString() !== officeIdStr) {
+      return {
+        ok: false,
+        error: "Không đúng bưu cục xuất kho theo tuyến"
+      };
+    }
+
     return { ok: true };
   }
 
-  // -------------------------------
-  // Các event khác luôn hợp lệ
-  // -------------------------------
   return { ok: true };
 }
