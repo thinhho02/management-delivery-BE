@@ -229,7 +229,7 @@ export const buildValueHtml = async (data: LabelData) => {
                   </div>
                 </div>
 
-                <div class="info-block recipient">
+                <div class="info-block-recipient">
                   <div class="name-rece">
                     <label for="name-customer"
                       class="label-small">Người nhận</label>
@@ -433,10 +433,12 @@ padding: 0px 12px 0px 10px;
 }
 
 /* Recipient */
-.recipient {
+.info-block-recipient {
   display: flex;
   justify-content: space-between;
   padding-top: 6px;
+  padding-bottom: 4px;
+  padding-left: 4px;
   border: none
 }
 

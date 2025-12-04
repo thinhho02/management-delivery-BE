@@ -511,10 +511,10 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
 
 
     // --- Sau khi sinh PDF => Cập nhật printed = true ---
-    await OrderModel.updateMany(
-        { _id: { $in: ids } },
-        { $set: { printed: true } }
-    );
+    // await OrderModel.updateMany(
+    //     { _id: { $in: ids } },
+    //     { $set: { printed: true } }
+    // );
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -880,10 +880,11 @@ export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
             weight: o.totalWeight,
             shipFee: o.shipFee,
             routePlan: o.routePlan,
-            printed: o.printed,
             currentType: o.shipment.currentType,
             events: o.shipment.events,
             pick: o.pick,
+
+            amountCod: o.totalAmount,
 
             createdAt: o.createdAt
         }
