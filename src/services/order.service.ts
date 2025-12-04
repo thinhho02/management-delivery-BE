@@ -335,7 +335,7 @@ export const buildLabelHtml = (body: string) => {
 /* ==== A6 PAGE SIZE ==== */
 .page-container {
   width: 400px;      /* A6 chuẩn */
-  height: 560px;     /* A6 chuẩn */
+  height: 540px;     /* A6 chuẩn */
   background: #fff;
   padding: 0;
   margin: 0;
@@ -347,13 +347,12 @@ export const buildLabelHtml = (body: string) => {
 .invoice-wrapper {
   height: 100%;
   width: 100%;
-  background: white;
 }
 
 /* Shipping Label */
 .shipping-label {
-height: calc(100% - 50px);
-padding: 20px 10px;
+height: 100%;
+padding: 0px 12px 0px 10px;
   background: white;
   font-family: Arial, sans-serif;
   font-size: 10px;

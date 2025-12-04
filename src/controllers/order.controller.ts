@@ -5,13 +5,12 @@ import { buildLabelHtml, buildValueHtml, generateRoutePlan, getBestPostOffice, m
 import catchError from "@/utils/catchError.js";
 import mongoose from "mongoose";
 import z from "zod";
-import QRCode from "qrcode";
-import Chromium from "@sparticuz/chromium";
-import puppeteer from "puppeteer-core";
+import html_to_pdf from "html-pdf-node";
 import ShipperZone from "@/models/shipperZone.js";
 import ShipperDetailModel from "@/models/shipperDetail.js";
 import ShipperTaskModel from "@/models/shipperTask.js";
-import { launchBrowser } from "@/utils/puppeteer.js";
+import { AppThrowError } from "@/utils/AppThrowError.js";
+import { generatePdfAsync } from "@/utils/puppeteer.js";
 
 
 const SchemaInputOrder = z.object({
@@ -506,20 +505,7 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
     // Puppeteer sinh PDF
 
 
-
-    const browser = await launchBrowser()
-    console.log(browser)
-    const page = await browser.newPage();
-    await page.setContent(buildPdf, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-        format: pageSize,
-        printBackground: true,
-        // margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' } // Customize margins as needed
-    });
-
-    await browser.close();
-
+    const pdfBuffer = await generatePdfAsync(buildPdf, pageSize)
 
     // Merge tất cả PDF (puppeteer làm được)
 

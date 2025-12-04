@@ -1,28 +1,32 @@
-import Chromium from "@sparticuz/chromium";
-import puppeteer from "puppeteer";
+import { generatePdf, type Options } from "html-pdf-node";
 
-import puppeteerCore from "puppeteer-core";
+export function generatePdfAsync(html: string, pageSize: string = "A6"): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        try {
+            const file = { content: html };
 
+            const options: Options = {
+                format: pageSize,
+                displayHeaderFooter: false,
+                printBackground: true,
+                margin: { top: "0mm", bottom: "0mm", left: "0mm", right: "0mm" }
+            };
 
-export async function launchBrowser() {
-    // Nếu chạy local
-    // if (process.env.NODE_ENV !== "production") {
-        return await puppeteer.launch();
-    // }
+            generatePdf(file, options, (err: Error | null, buffer: Buffer) => {
+                if (err) {
+                    console.error("PDF generation error:", err);
+                    return reject(err);
+                }
 
-    // Nếu chạy trên production
-    // return await puppeteerCore.launch();
-    // return await puppeteerCore.launch({
-    //     args: [
-    //         ...Chromium.args,
-    //         "--disable-gpu",
-    //         "--disable-dev-shm-usage",
-    //         "--no-sandbox",
-    //         "--disable-setuid-sandbox",
-    //     ],
-    //     defaultViewport: Chromium.defaultViewport,
-    //     executablePath: await Chromium.executablePath(),
-    //     headless: Chromium.headless === "shell" ? "shell" : true,
-        
-    // });
+                if (!buffer) {
+                    return reject(new Error("PDF buffer is empty!"));
+                }
+
+                return resolve(buffer);
+            });
+        } catch (error) {
+            console.error("Unexpected PDF generation exception:", error);
+            reject(error);
+        }
+    });
 }
