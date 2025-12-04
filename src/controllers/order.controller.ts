@@ -726,8 +726,8 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
                 eventNote: ev.eventNote || null,  // ✔ nội dung mô tả event
 
                 timestamp: ev.timestamp,
-
-                office: ev.officeId?.name || null,
+                officeId: ev.officeId?._id,
+                officeName: ev.officeId?.name || null,
                 officeAddress: ev.officeId?.address || null,
                 officeLocation: ev.officeId?.location || null,
 
