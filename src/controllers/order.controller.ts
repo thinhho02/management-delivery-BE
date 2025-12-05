@@ -770,6 +770,7 @@ export const getOrdersForPickupOffice = catchError(async (req, res) => {
         // Route plan (from / to)
         .populate("routePlan.from")
         .populate("routePlan.to")
+        .populate("shipment.events.officeId")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
