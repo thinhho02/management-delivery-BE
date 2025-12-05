@@ -858,11 +858,6 @@ export function validateOfficeRoute(
     return { ok: false, error: "Đơn hàng không có tuyến vận chuyển" };
   }
 
-  // Event của shipper không cần check
-  if (!["arrival", "departure"].includes(eventType)) {
-    return { ok: true };
-  }
-
   // Office phải thuộc routePlan
   const belongsToRoute = routePlan.some(
     (step) =>
@@ -884,11 +879,11 @@ export function validateOfficeRoute(
   let lastCompletedStepIndex = -1;
 
   for (const ev of events) {
-    if (ev.eventType !== "arrival" || !ev.officeId) continue;
+    if (ev.eventType !== "departure" || !ev.officeId) continue;
     const evOfficeId = ev.officeId.toString();
 
     const idx = routePlan.findIndex(
-      (step) => step.to?._id?.toString() === evOfficeId
+      (step) => step.from?._id?.toString() === evOfficeId
     );
 
     if (idx > lastCompletedStepIndex) {
@@ -941,8 +936,10 @@ export function validateOfficeRoute(
   // ========================
   if (eventType === "departure") {
 
+    const lastEventArrival = events.at(-1)
+
     // 🚫 Departure khi chưa arrival → KHÔNG HỢP LỆ
-    if (lastCompletedStepIndex === -1) {
+    if (lastEventArrival.eventType !== "arrival" || lastEventArrival.officeId.toString() !== officeIdStr) {
       return {
         ok: false,
         error: "Đơn hàng chưa được nhập kho, không thể xuất kho"
