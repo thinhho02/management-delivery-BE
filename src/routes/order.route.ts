@@ -1,4 +1,4 @@
-import { arrangeTransportPickup, bulkCancelOrders, bulkPrintOrdersPdf, createOrder, getOrderDetailByBusiness, getOrdersByBusiness, getOrdersForDeliveryOffice, getOrdersForPickupOffice, scanShipment } from "@/controllers/order.controller.js";
+import { arrangeTransportPickup, bulkCancelOrders, bulkPrintOrdersPdf, createOrder, getOrderByHubInbound, getOrderByHubOutbound, getOrderBySortingInbound, getOrderBySortingOutbound, getOrderDetailByBusiness, getOrdersByBusiness, getOrdersForDeliveryOffice, getOrdersForPickupOffice, scanShipment } from "@/controllers/order.controller.js";
 import { verifyAccessToken } from "@/middlewares/verifyAccessToken.js";
 import { Router } from "express";
 
@@ -18,8 +18,15 @@ routeOrder.post("/print-bulk", verifyAccessToken, bulkPrintOrdersPdf)
 
 
 
-routeOrder.get("/pickup-office/:pickupOfficeId", verifyAccessToken, getOrdersForPickupOffice)
-routeOrder.get("/delivery-office/:pickupOfficeId", verifyAccessToken, getOrdersForDeliveryOffice)
+routeOrder.get("/delivery_office/:officeId/inbound", verifyAccessToken, getOrdersForPickupOffice)
+routeOrder.get("/delivery_office/:officeId/outbound", verifyAccessToken, getOrdersForDeliveryOffice)
+
+routeOrder.get("/distribution_hub/:officeId/inbound", verifyAccessToken, getOrderByHubInbound)
+routeOrder.get("/distribution_hub/:officeId/outbound", verifyAccessToken, getOrderByHubOutbound)
+
+routeOrder.get("/sorting_center/:officeId/inbound", verifyAccessToken, getOrderBySortingInbound)
+routeOrder.get("/sorting_center/:officeId/outbound", verifyAccessToken, getOrderBySortingOutbound)
+// routeOrder.get("/delivery-office/:pickupOfficeId", verifyAccessToken, getOrdersForDeliveryOffice)
 
 
 

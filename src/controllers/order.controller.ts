@@ -1,7 +1,7 @@
 import OrderModel from "@/models/order.js";
 import PostOfficeModel from "@/models/postOffice.js";
 import UserModel from "@/models/user.js";
-import { buildLabelHtml, buildValueHtml, generateRoutePlan, getBestPostOffice, hasOfficeScanned, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
+import { buildLabelHtml, buildValueHtml, findInboundOrdersForOffice, findOutboundOrdersForOffice, generateRoutePlan, getBestPostOffice, hasOfficeScanned, mapOrderResponse, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
 import catchError from "@/utils/catchError.js";
 import mongoose from "mongoose";
 import z from "zod";
@@ -741,9 +741,9 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
 
 
 export const getOrdersForPickupOffice = catchError(async (req, res) => {
-    const { pickupOfficeId } = req.params; // từ token employee
-    if (!pickupOfficeId) {
-        return res.status(401).json({ message: "Missing pickup office info" });
+    const { officeId } = req.params; // từ token employee
+    if (!officeId) {
+        return res.status(400).json({ message: "Missing pickup office info" });
     }
 
     const page = Number(req.query.page) || 1;
@@ -753,11 +753,11 @@ export const getOrdersForPickupOffice = catchError(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter: any = {
-        "shipment.pickupOfficeId": pickupOfficeId,
+        "shipment.pickupOfficeId": officeId,
     };
 
     if (status) {
-        filter["shipment.currentType"] = status;
+        filter["shipment.currentType"] = status || {};
     }
 
     if (pick) {
@@ -781,33 +781,33 @@ export const getOrdersForPickupOffice = catchError(async (req, res) => {
     // Map về dạng FE cần
     const result = orders.map(o => {
 
+        return mapOrderResponse(o)
+        // return {
+        //     _id: o._id,
+        //     orderCode: o._id.toString().slice(-8).toUpperCase(),
+        //     trackingCode: o.shipment?.trackingCode ?? null,
+        //     status: o.status,
+        //     sender: {
+        //         name: (o.sellerId as any)?.name,
+        //         phone: (o.sellerId as any)?.numberPhone,
+        //     },
 
-        return {
-            _id: o._id,
-            orderCode: o._id.toString().slice(-8).toUpperCase(),
-            trackingCode: o.shipment?.trackingCode ?? null,
-            status: o.status,
-            sender: {
-                name: (o.sellerId as any)?.name,
-                phone: (o.sellerId as any)?.numberPhone,
-            },
+        //     receiver: {
+        //         name: (o.customerId as any)?.name,
+        //         phone: (o.customerId as any)?.numberPhone,
+        //     },
 
-            receiver: {
-                name: (o.customerId as any)?.name,
-                phone: (o.customerId as any)?.numberPhone,
-            },
+        //     receiverAddress: (o.customerId as any)?.address,
+        //     weight: o.totalWeight,
+        //     shipFee: o.shipFee,
+        //     routePlan: o.routePlan,
+        //     printed: o.printed,
+        //     currentType: o.shipment.currentType,
+        //     events: o.shipment.events,
+        //     pick: o.pick,
 
-            receiverAddress: (o.customerId as any)?.address,
-            weight: o.totalWeight,
-            shipFee: o.shipFee,
-            routePlan: o.routePlan,
-            printed: o.printed,
-            currentType: o.shipment.currentType,
-            events: o.shipment.events,
-            pick: o.pick,
-
-            createdAt: o.createdAt
-        }
+        //     createdAt: o.createdAt
+        // }
     })
 
 
@@ -822,9 +822,9 @@ export const getOrdersForPickupOffice = catchError(async (req, res) => {
 });
 
 export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
-    const { pickupOfficeId } = req.params; // từ token employee
-    if (!pickupOfficeId) {
-        return res.status(401).json({ message: "Missing pickup office info" });
+    const { officeId } = req.params; // từ token employee
+    if (!officeId) {
+        return res.status(400).json({ message: "Missing pickup office info" });
     }
 
     const page = Number(req.query.page) || 1;
@@ -834,7 +834,7 @@ export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter: any = {
-        "shipment.deliveryOfficeId": pickupOfficeId,
+        "shipment.deliveryOfficeId": officeId,
     };
 
     if (status) {
@@ -861,34 +861,34 @@ export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
     // Map về dạng FE cần
     const result = orders.map(o => {
 
+        return mapOrderResponse(o)
+        // return {
+        //     _id: o._id,
+        //     orderCode: o._id.toString().slice(-8).toUpperCase(),
+        //     trackingCode: o.shipment?.trackingCode ?? null,
+        //     status: o.status,
+        //     sender: {
+        //         name: (o.sellerId as any)?.name,
+        //         phone: (o.sellerId as any)?.numberPhone,
+        //     },
 
-        return {
-            _id: o._id,
-            orderCode: o._id.toString().slice(-8).toUpperCase(),
-            trackingCode: o.shipment?.trackingCode ?? null,
-            status: o.status,
-            sender: {
-                name: (o.sellerId as any)?.name,
-                phone: (o.sellerId as any)?.numberPhone,
-            },
+        //     receiver: {
+        //         name: (o.customerId as any)?.name,
+        //         phone: (o.customerId as any)?.numberPhone,
+        //     },
 
-            receiver: {
-                name: (o.customerId as any)?.name,
-                phone: (o.customerId as any)?.numberPhone,
-            },
+        //     receiverAddress: (o.customerId as any)?.address,
+        //     weight: o.totalWeight,
+        //     shipFee: o.shipFee,
+        //     routePlan: o.routePlan,
+        //     currentType: o.shipment.currentType,
+        //     events: o.shipment.events,
+        //     pick: o.pick,
 
-            receiverAddress: (o.customerId as any)?.address,
-            weight: o.totalWeight,
-            shipFee: o.shipFee,
-            routePlan: o.routePlan,
-            currentType: o.shipment.currentType,
-            events: o.shipment.events,
-            pick: o.pick,
+        //     amountCod: o.totalAmount,
 
-            amountCod: o.totalAmount,
-
-            createdAt: o.createdAt
-        }
+        //     createdAt: o.createdAt
+        // }
     })
 
 
@@ -901,6 +901,151 @@ export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
         }
     });
 });
+
+export const getOrderByHubInbound = catchError(async (req, res) => {
+    const { officeId } = req.params;
+    if (!officeId) {
+        return res.status(400).json({ message: "Missing pickup office info" });
+    }
+
+    const page = Number(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const orders = await OrderModel.find({ "routePlan.to": officeId })
+        .populate("sellerId")
+        .populate("customerId")
+        .populate("routePlan.from")
+        .populate("routePlan.to")
+        .populate("shipment.events.officeId")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
+
+    const result = orders.map(o => findInboundOrdersForOffice(o, officeId) || [])
+
+    return res.status(200).json({
+        orders: result,
+        pagination: {
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        }
+    });
+});
+
+
+export const getOrderByHubOutbound = catchError(async (req, res) => {
+    const { officeId } = req.params;
+    if (!officeId) {
+        return res.status(400).json({ message: "Missing pickup office info" });
+    }
+
+    const page = Number(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const orders = await OrderModel.find({
+        "routePlan.to": officeId
+    })
+        .populate("sellerId")
+        .populate("customerId")
+        .populate("routePlan.from")
+        .populate("routePlan.to")
+        .populate("shipment.events.officeId")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+
+    const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
+    const result = orders.map(o => findOutboundOrdersForOffice(o, officeId) || [])
+
+    return res.status(200).json({
+        orders: result,
+        pagination: {
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        }
+    });
+});
+
+
+export const getOrderBySortingInbound = catchError(async (req, res) => {
+    const { officeId } = req.params;
+    if (!officeId) {
+        return res.status(400).json({ message: "Missing pickup office info" });
+    }
+    const page = Number(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const orders = await OrderModel.find({ "routePlan.to": officeId })
+        .populate("sellerId")
+        .populate("customerId")
+        .populate("routePlan.from")
+        .populate("routePlan.to")
+        .populate("shipment.events.officeId")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
+
+    const result = orders.map(o => findInboundOrdersForOffice(o, officeId) || [])
+
+    return res.status(200).json({
+        orders: result,
+        pagination: {
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        }
+    });
+});
+
+export const getOrderBySortingOutbound = catchError(async (req, res) => {
+    const { officeId } = req.params;
+    if (!officeId) {
+        return res.status(400).json({ message: "Missing pickup office info" });
+    }
+    const page = Number(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const orders = await OrderModel.find({
+        "routePlan.to": officeId
+    })
+        .populate("sellerId")
+        .populate("customerId")
+        .populate("routePlan.from")
+        .populate("routePlan.to")
+        .populate("shipment.events.officeId")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+
+    const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
+    const result = orders.map(o => findOutboundOrdersForOffice(o, officeId) || [])
+
+    return res.status(200).json({
+        orders: result,
+        pagination: {
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        }
+    });
+});
+
 
 
 export const arrangeTransportPickup = catchError(async (req, res) => {

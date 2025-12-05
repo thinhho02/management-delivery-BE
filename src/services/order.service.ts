@@ -1,4 +1,5 @@
 import type { IOrder, ShipmentEventType } from "@/models/order.js";
+import OrderModel from "@/models/order.js";
 import PostOfficeModel from "@/models/postOffice.js";
 import { AppThrowError } from "@/utils/AppThrowError.js";
 import { sendMail } from "@/utils/nodemailer.js";
@@ -979,4 +980,89 @@ export function validateOfficeRoute(
 
   return { ok: true };
 }
+
+
+
+export function mapOrderResponse(o: any) {
+  return {
+    _id: o._id,
+    orderCode: o._id?.toString().slice(-8).toUpperCase(),
+    trackingCode: o.shipment?.trackingCode ?? null,
+    status: o.status,
+
+    sender: {
+      name: o.sellerId?.name,
+      phone: o.sellerId?.numberPhone,
+    },
+
+    receiver: {
+      name: o.customerId?.name,
+      phone: o.customerId?.numberPhone,
+    },
+
+    receiverAddress: o.customerId?.address,
+    weight: o.totalWeight,
+    shipFee: o.shipFee,
+    routePlan: o.routePlan,
+    currentType: o.shipment.currentType,
+    events: o.shipment.events,
+    pick: o.pick,
+    printed: o.printed,
+    amountCod: o.totalAmount ?? null,
+
+    createdAt: o.createdAt
+  };
+}
+
+export function findInboundOrdersForOffice(o: any, officeIdStr: string) {
+
+  const events = o.shipment?.events || [];
+
+  // Arrival vào officeId → đã nhận rồi → không inbound
+  const arrived = events.some(
+    (ev: any) => ev.eventType === "arrival" && ev.officeId?._id?.toString() === officeIdStr
+  );
+  if (arrived) return;
+
+  // Tìm step dẫn đến officeId
+  const stepIndex = o.routePlan.findIndex(
+    (s: any) => s.to?._id?.toString() === officeIdStr
+  );
+  if (stepIndex === -1) return;
+
+  const prevOfficeId = o.routePlan[stepIndex]?.from?._id?.toString();
+
+  // Phải departure từ bưu cục trước đó
+  const departedPrev = events.some(
+    (ev: any) =>
+      ev.eventType === "departure" &&
+      ev.officeId?._id?.toString() === prevOfficeId
+  );
+
+  if (!departedPrev) return;
+
+  return mapOrderResponse(o);
+}
+
+export function findOutboundOrdersForOffice(o: any, officeIdStr: string) {
+
+  const events = o.shipment?.events || [];
+
+  // Kiểm tra đã arrival vào office chưa
+  const arrived = events.some(
+    (ev: any) => ev.eventType === "arrival" && ev.officeId?._id?.toString() === officeIdStr
+  );
+  if (!arrived) return; // chưa vào kho → không outbound
+
+  // Kiểm tra đã departure khỏi office chưa
+  const departed = events.some(
+    (ev: any) => ev.eventType === "departure" && ev.officeId?._id?.toString() === officeIdStr
+  );
+  if (departed) return;
+
+  return mapOrderResponse(o);
+
+}
+
+
 
