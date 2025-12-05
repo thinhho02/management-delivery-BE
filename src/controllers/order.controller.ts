@@ -782,32 +782,6 @@ export const getOrdersForPickupOffice = catchError(async (req, res) => {
     const result = orders.map(o => {
 
         return mapOrderResponse(o)
-        // return {
-        //     _id: o._id,
-        //     orderCode: o._id.toString().slice(-8).toUpperCase(),
-        //     trackingCode: o.shipment?.trackingCode ?? null,
-        //     status: o.status,
-        //     sender: {
-        //         name: (o.sellerId as any)?.name,
-        //         phone: (o.sellerId as any)?.numberPhone,
-        //     },
-
-        //     receiver: {
-        //         name: (o.customerId as any)?.name,
-        //         phone: (o.customerId as any)?.numberPhone,
-        //     },
-
-        //     receiverAddress: (o.customerId as any)?.address,
-        //     weight: o.totalWeight,
-        //     shipFee: o.shipFee,
-        //     routePlan: o.routePlan,
-        //     printed: o.printed,
-        //     currentType: o.shipment.currentType,
-        //     events: o.shipment.events,
-        //     pick: o.pick,
-
-        //     createdAt: o.createdAt
-        // }
     })
 
 
@@ -862,33 +836,6 @@ export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
     const result = orders.map(o => {
 
         return mapOrderResponse(o)
-        // return {
-        //     _id: o._id,
-        //     orderCode: o._id.toString().slice(-8).toUpperCase(),
-        //     trackingCode: o.shipment?.trackingCode ?? null,
-        //     status: o.status,
-        //     sender: {
-        //         name: (o.sellerId as any)?.name,
-        //         phone: (o.sellerId as any)?.numberPhone,
-        //     },
-
-        //     receiver: {
-        //         name: (o.customerId as any)?.name,
-        //         phone: (o.customerId as any)?.numberPhone,
-        //     },
-
-        //     receiverAddress: (o.customerId as any)?.address,
-        //     weight: o.totalWeight,
-        //     shipFee: o.shipFee,
-        //     routePlan: o.routePlan,
-        //     currentType: o.shipment.currentType,
-        //     events: o.shipment.events,
-        //     pick: o.pick,
-
-        //     amountCod: o.totalAmount,
-
-        //     createdAt: o.createdAt
-        // }
     })
 
 
@@ -925,7 +872,7 @@ export const getOrderByHubInbound = catchError(async (req, res) => {
 
     const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
 
-    const result = orders.map(o => findInboundOrdersForOffice(o, officeId) || [])
+    const result = orders.map(o => findInboundOrdersForOffice(o, officeId)).filter(Boolean)
 
     return res.status(200).json({
         orders: result,
@@ -963,7 +910,7 @@ export const getOrderByHubOutbound = catchError(async (req, res) => {
 
 
     const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
-    const result = orders.map(o => findOutboundOrdersForOffice(o, officeId) || [])
+    const result = orders.map(o => findOutboundOrdersForOffice(o, officeId)).filter(Boolean)
 
     return res.status(200).json({
         orders: result,
@@ -998,7 +945,7 @@ export const getOrderBySortingInbound = catchError(async (req, res) => {
 
     const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
 
-    const result = orders.map(o => findInboundOrdersForOffice(o, officeId) || [])
+    const result = orders.map(o => findInboundOrdersForOffice(o, officeId)).filter(Boolean)
 
     return res.status(200).json({
         orders: result,
@@ -1034,7 +981,7 @@ export const getOrderBySortingOutbound = catchError(async (req, res) => {
 
 
     const total = await OrderModel.countDocuments({ "routePlan.to": officeId });
-    const result = orders.map(o => findOutboundOrdersForOffice(o, officeId) || [])
+    const result = orders.map(o => findOutboundOrdersForOffice(o, officeId)).filter(Boolean);
 
     return res.status(200).json({
         orders: result,
