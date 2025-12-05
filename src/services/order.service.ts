@@ -857,12 +857,12 @@ export function validateOfficeRoute(
     return { ok: false, error: "Đơn hàng không có tuyến vận chuyển" };
   }
 
-  // 0) Event không phải của bưu cục -> không check
-  if (eventType !== "arrival" && eventType !== "departure") {
+  // Event của shipper không cần check
+  if (!["arrival", "departure"].includes(eventType)) {
     return { ok: true };
   }
 
-  // 1) Office phải nằm trong routePlan
+  // Office phải thuộc routePlan
   const belongsToRoute = routePlan.some(
     (step) =>
       step.from?._id?.toString() === officeIdStr ||
@@ -874,8 +874,12 @@ export function validateOfficeRoute(
   }
 
   const events = order.shipment?.events || [];
+  const firstStep = routePlan[0];
+  const lastStepIndex = routePlan.length - 1;
 
-  // 2) Tính step đã hoàn thành cuối cùng = arrival tại step.to
+  // ================================
+  // Xác định step đã hoàn thành cuối cùng (arrival tại step.to)
+  // ================================
   let lastCompletedStepIndex = -1;
 
   for (const ev of events) {
@@ -885,32 +889,33 @@ export function validateOfficeRoute(
     const idx = routePlan.findIndex(
       (step) => step.to?._id?.toString() === evOfficeId
     );
+
     if (idx > lastCompletedStepIndex) {
       lastCompletedStepIndex = idx;
     }
   }
 
-  const firstStep = routePlan[0];
-  const lastStepIndex = routePlan.length - 1;
-
-  // =========================
-  // ARRIVAL
-  // =========================
+  // ========================
+  // ARRIVAL VALIDATION
+  // ========================
   if (eventType === "arrival") {
-    // 2.1) Chưa có step nào hoàn thành -> arrival đầu tiên
+
+    // A) Arrival đầu tiên → phải tại pickupOffice = step[0].from
     if (lastCompletedStepIndex === -1) {
-      // Arrival đầu tiên PHẢI ở pickupOffice (from của step 0)
-      if (firstStep && firstStep.from?._id?.toString() !== officeIdStr) {
+
+      if (firstStep?.from?._id?.toString() !== officeIdStr) {
         return {
           ok: false,
           error: "Đơn hàng phải được nhập kho tại bưu cục nhận đầu tiên theo tuyến"
         };
       }
+
       return { ok: true };
     }
 
-    // 2.2) Đã hoàn thành một số step -> arrival tiếp theo
+    // B) Arrival tiếp theo → phải đúng step.to
     const nextStepIndex = lastCompletedStepIndex + 1;
+
     if (nextStepIndex > lastStepIndex) {
       return {
         ok: false,
@@ -919,7 +924,8 @@ export function validateOfficeRoute(
     }
 
     const nextStep = routePlan[nextStepIndex];
-    if (nextStep && nextStep.to?._id?.toString() !== officeIdStr) {
+
+    if (nextStep?.to?._id?.toString() !== officeIdStr) {
       return {
         ok: false,
         error: "Không đúng bưu cục nhận hàng tiếp theo theo tuyến"
@@ -929,39 +935,39 @@ export function validateOfficeRoute(
     return { ok: true };
   }
 
-  // =========================
-  // DEPARTURE
-  // =========================
+  // ========================
+  // DEPARTURE VALIDATION
+  // ========================
   if (eventType === "departure") {
-    // 3.1) Chưa có arrival step nào -> xuất từ pickupOffice
+
+    // 🚫 Departure khi chưa arrival → KHÔNG HỢP LỆ
     if (lastCompletedStepIndex === -1) {
-      if (firstStep && firstStep.from?._id?.toString() !== officeIdStr) {
-        return {
-          ok: false,
-          error: "Không đúng bưu cục xuất kho đầu tiên theo tuyến"
-        };
-      }
-      return { ok: true };
+      return {
+        ok: false,
+        error: "Đơn hàng chưa được nhập kho, không thể xuất kho"
+      };
     }
 
     const nextStepIndex = lastCompletedStepIndex + 1;
 
-    // 3.2) Nếu tất cả step đã hoàn thành (đã arrival bưu cục cuối)
+    // A) Nếu tất cả step đã hoàn thành → xuất kho cuối để giao shipper
     if (nextStepIndex > lastStepIndex) {
-      // Cho phép xuất kho từ bưu cục cuối (giao cho shipper)
       const finalOfficeId = routePlan[lastStepIndex]?.to?._id?.toString();
+
       if (finalOfficeId !== officeIdStr) {
         return {
           ok: false,
           error: "Không đúng bưu cục xuất kho cuối tuyến"
         };
       }
+
       return { ok: true };
     }
 
-    // 3.3) Đang ở giữa tuyến -> departure phải từ from của step kế tiếp
+    // B) Departure tại from của step tiếp theo
     const nextStep = routePlan[nextStepIndex];
-    if (nextStep && nextStep.from?._id?.toString() !== officeIdStr) {
+
+    if (nextStep?.from?._id?.toString() !== officeIdStr) {
       return {
         ok: false,
         error: "Không đúng bưu cục xuất kho theo tuyến"
@@ -973,3 +979,4 @@ export function validateOfficeRoute(
 
   return { ok: true };
 }
+
