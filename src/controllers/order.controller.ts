@@ -1045,7 +1045,6 @@ export const scanShipment = catchError(async (req, res) => {
     const order = await OrderModel.findOne({ "shipment.trackingCode": trackingCode })
         .populate("routePlan.from")
         .populate("routePlan.to")
-        .populate("shipment.events.officeId");
 
     if (!order) {
         return res.status(404).json({ message: "Không tìm thấy đơn hàng" });

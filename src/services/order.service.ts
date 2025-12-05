@@ -740,7 +740,7 @@ export function hasOfficeScanned(
     // Office-related events
     const isOfficeEvent = ["arrival", "departure", "returned"].includes(eventType);
     if (isOfficeEvent) {
-      return ev.eventType === eventType && ev.officeId?._id.toString() === whoScan;
+      return ev.eventType === eventType && ev.officeId.toString() === whoScan;
     }
 
     // Shipper-related events
