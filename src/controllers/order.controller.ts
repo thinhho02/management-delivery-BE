@@ -671,6 +671,8 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
         .populate("sellerId")
         .populate("customerId")
         .populate("shipment.events.officeId")      // ✔ cần để có office.name + address
+        .populate("shipment.events.shipperDetailId")
+        .populate("shipment.events.shipperDetailId.employeeId")
         .populate("shipment.pickupOfficeId")
         .populate("shipment.deliveryOfficeId")
         .lean();
@@ -723,13 +725,18 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
 
             events: (order.shipment?.events || []).map((ev: any) => ({
                 eventType: ev.eventType,          // ✔ lấy trực tiếp từ embed
-                eventNote: ev.eventNote || null,  // ✔ nội dung mô tả event
+                eventNote: ev.note || null,  // ✔ nội dung mô tả event
 
                 timestamp: ev.timestamp,
-                officeId: ev.officeId?._id,
-                officeName: ev.officeId?.name || null,
-                officeAddress: ev.officeId?.address || null,
-                officeLocation: ev.officeId?.location || null,
+                officeId: ev?.officeId?._id,
+                officeName: ev?.officeId?.name || null,
+                officeAddress: ev?.officeId?.address || null,
+                officeLocation: ev?.officeId?.location || null,
+
+                shipperId: ev?.shipperDetailId?.id,
+                shipperName: ev?.shipperDetailId?.employeeId?.name,
+                shipperNumberPhone: ev?.shipperDetailId?.employeeId?.numberPhone,
+
 
                 proofImages: ev.proofImages || [],
             })),

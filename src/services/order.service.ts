@@ -921,7 +921,7 @@ export function validateOfficeRoute(
 
     const nextStep = routePlan[nextStepIndex];
 
-    if (nextStep?.to?._id?.toString() !== officeIdStr) {
+    if (nextStep?.from?._id?.toString() !== officeIdStr) {
       return {
         ok: false,
         error: "Không đúng bưu cục nhận hàng tiếp theo theo tuyến"
