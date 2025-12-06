@@ -7,9 +7,8 @@ export function generatePdfAsync(html: string, pageSize: string = "A6"): Promise
 
             const options: Options = {
                 format: pageSize,
-                displayHeaderFooter: false,
                 printBackground: true,
-                margin: { top: "0mm", bottom: "0mm", left: "0mm", right: "0mm" }
+                margin: { top: "5mm", bottom: "2mm", left: "0mm", right: "0mm" }
             };
 
             generatePdf(file, options, (err: Error | null, buffer: Buffer) => {

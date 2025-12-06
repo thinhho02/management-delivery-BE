@@ -1138,7 +1138,7 @@ export const arrangeTransportPickup = catchError(async (req, res) => {
 
 
 
-export const scanShipment = catchError(async (req, res) => {
+export const scanShipmentOffice = catchError(async (req, res) => {
     const { trackingCode, eventType, officeId } = req.body;
 
     const order = await OrderModel.findOne({ "shipment.trackingCode": trackingCode })

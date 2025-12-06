@@ -326,7 +326,7 @@ export const verifyEmailAndSendMail = catchError(async (req, res) => {
 
     if (!business) {
         return res.status(404).json({
-            message: "Không tìm thầy tài khoản"
+            message: "Không tìm thấy tài khoản"
         })
     }
     if (!business.status) {
@@ -520,7 +520,7 @@ export const updateBusiness = catchError(async (req, res) => {
     const business = await BusinessModel.findById(user.id).populate("role", "name")
     if (!business) {
         return res.status(404).json({
-            message: "Không tìm thầy tài khoản"
+            message: "Không tìm thấy tài khoản"
         })
     }
     if (!business.status) {
@@ -573,7 +573,7 @@ export const createAPIKey = catchError(async (req, res) => {
     const business = await BusinessModel.findById(user.id).populate("role", "name")
     if (!business) {
         return res.status(404).json({
-            message: "Không tìm thầy tài khoản"
+            message: "Không tìm thấy tài khoản"
         })
     }
     if (!business.status) {
@@ -613,7 +613,7 @@ export const changePassword = catchError(async (req, res) => {
     // Verify
     if (!business) {
         return res.status(404).json({
-            message: "Không tìm thầy tài khoản"
+            message: "Không tìm thấy tài khoản"
         })
     }
 
@@ -670,7 +670,7 @@ export const verifyEmail = catchError(async (req, res) => {
     // Verify
     if (!business) {
         return res.status(404).json({
-            message: "Không tìm thầy tài khoản"
+            message: "Không tìm thấy tài khoản"
         })
     }
 
@@ -697,7 +697,7 @@ export const updateNewPassword = catchError(async (req, res) => {
     // Verify
     if (!business) {
         return res.status(404).json({
-            message: "Không tìm thầy tài khoản"
+            message: "Không tìm thấy tài khoản"
         })
     }
 

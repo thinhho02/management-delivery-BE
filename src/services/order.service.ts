@@ -336,13 +336,15 @@ export const buildLabelHtml = (body: string) => {
 /* ==== A6 PAGE SIZE ==== */
 .page-container {
   width: 400px;      /* A6 chuẩn */
-  height: 540px;     /* A6 chuẩn */
-  background: #fff;
+  height: 100%;     /* A6 chuẩn */
+  background: red;
   padding: 0;
   margin: 0;
   display: flex;
   justify-content: center;
   align-items: flex-start;
+    page-break-after: always;
+  page-break-inside: avoid;
 }
 
 .invoice-wrapper {
@@ -871,33 +873,32 @@ export function validateOfficeRoute(
 
   const events = order.shipment?.events || [];
   const firstStep = routePlan[0];
-  const lastStepIndex = routePlan.length - 1;
+  const lastStep = routePlan.length - 1;
 
-  // ================================
-  // Xác định step đã hoàn thành cuối cùng (arrival tại step.to)
-  // ================================
-  let lastCompletedStepIndex = -1;
 
-  for (const ev of events) {
-    if (ev.eventType !== "departure" || !ev.officeId) continue;
-    const evOfficeId = ev.officeId.toString();
 
-    const idx = routePlan.findIndex(
-      (step) => step.from?._id?.toString() === evOfficeId
-    );
-
-    if (idx > lastCompletedStepIndex) {
-      lastCompletedStepIndex = idx;
-    }
-  }
-
-  // ========================
   // ARRIVAL VALIDATION
-  // ========================
   if (eventType === "arrival") {
 
-    // A) Arrival đầu tiên → phải tại pickupOffice = step[0].from
-    if (lastCompletedStepIndex === -1) {
+    // Xác định step đã hoàn thành cuối cùng
+    let lastCompletedStepFromIndex = -1;
+
+    for (const ev of events) {
+      if (ev.eventType !== "departure" || !ev.officeId) continue;
+      const evOfficeId = ev.officeId.toString();
+
+      const idStepTo = routePlan.findIndex(
+        (step) => step.to?._id?.toString() === evOfficeId
+      );
+
+      if (idStepTo > lastCompletedStepFromIndex) {
+        lastCompletedStepFromIndex = idStepTo;
+      }
+    }
+
+
+    // Arrival đầu tiên → phải tại pickupOffice = step[0].from
+    if (lastCompletedStepFromIndex === -1) {
 
       if (firstStep?.from?._id?.toString() !== officeIdStr) {
         return {
@@ -910,18 +911,17 @@ export function validateOfficeRoute(
     }
 
     // B) Arrival tiếp theo → phải đúng step.to
-    const nextStepIndex = lastCompletedStepIndex + 1;
 
-    if (nextStepIndex > lastStepIndex) {
+    if (lastCompletedStepFromIndex == lastStep) {
       return {
         ok: false,
         error: "Đơn hàng đã hoàn tất tuyến, không thể nhập kho thêm"
       };
     }
 
-    const nextStep = routePlan[nextStepIndex];
+    const prevStep = routePlan[lastCompletedStepFromIndex];
 
-    if (nextStep?.from?._id?.toString() !== officeIdStr) {
+    if (prevStep?.to?._id?.toString() !== officeIdStr) {
       return {
         ok: false,
         error: "Không đúng bưu cục nhận hàng tiếp theo theo tuyến"
@@ -936,21 +936,38 @@ export function validateOfficeRoute(
   // ========================
   if (eventType === "departure") {
 
-    const lastEventArrival = events.at(-1)
 
-    // 🚫 Departure khi chưa arrival → KHÔNG HỢP LỆ
-    if (lastEventArrival.eventType !== "arrival" || lastEventArrival.officeId.toString() !== officeIdStr) {
+    // Xác định step đã nhập kho cuối cùng
+    let lastCompletedStepToIndex = -1;
+
+    for (const ev of events) {
+      if (ev.eventType !== "arrival" || !ev.officeId) continue;
+      const evOfficeId = ev.officeId.toString();
+
+      const idStepFrom = routePlan.findIndex(
+        (step) => step.from?._id?.toString() === evOfficeId
+      );
+
+      if (idStepFrom > lastCompletedStepToIndex) {
+        lastCompletedStepToIndex = idStepFrom;
+      }
+    }
+
+
+    // Departure khi chưa arrival → KHÔNG HỢP LỆ
+    if (lastCompletedStepToIndex === -1) {
       return {
         ok: false,
         error: "Đơn hàng chưa được nhập kho, không thể xuất kho"
       };
     }
 
-    const nextStepIndex = lastCompletedStepIndex + 1;
+    const currentStep = routePlan[lastCompletedStepToIndex]
 
-    // A) Nếu tất cả step đã hoàn thành → xuất kho cuối để giao shipper
-    if (nextStepIndex > lastStepIndex) {
-      const finalOfficeId = routePlan[lastStepIndex]?.to?._id?.toString();
+
+    // // A) Nếu tất cả step đã hoàn thành → xuất kho cuối để giao shipper
+    if (lastCompletedStepToIndex == lastStep) {
+      const finalOfficeId = routePlan[lastCompletedStepToIndex]?.to?._id?.toString();
 
       if (finalOfficeId !== officeIdStr) {
         return {
@@ -963,9 +980,8 @@ export function validateOfficeRoute(
     }
 
     // B) Departure tại from của step tiếp theo
-    const nextStep = routePlan[nextStepIndex];
 
-    if (nextStep?.from?._id?.toString() !== officeIdStr) {
+    if (currentStep?.from?._id?.toString() !== officeIdStr) {
       return {
         ok: false,
         error: "Không đúng bưu cục xuất kho theo tuyến"

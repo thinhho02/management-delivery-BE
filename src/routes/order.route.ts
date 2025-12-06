@@ -1,4 +1,18 @@
-import { arrangeTransportPickup, bulkCancelOrders, bulkPrintOrdersPdf, createOrder, getOrderByHubInbound, getOrderByHubOutbound, getOrderBySortingInbound, getOrderBySortingOutbound, getOrderDetailByBusiness, getOrdersByBusiness, getOrdersForDeliveryOffice, getOrdersForPickupOffice, scanShipment } from "@/controllers/order.controller.js";
+import {
+    arrangeTransportPickup,
+    bulkCancelOrders,
+    bulkPrintOrdersPdf,
+    createOrder,
+    getOrderByHubInbound,
+    getOrderByHubOutbound,
+    getOrderBySortingInbound,
+    getOrderBySortingOutbound,
+    getOrderDetailByBusiness,
+    getOrdersByBusiness,
+    getOrdersForDeliveryOffice,
+    getOrdersForPickupOffice,
+    scanShipmentOffice
+} from "@/controllers/order.controller.js";
 import { verifyAccessToken } from "@/middlewares/verifyAccessToken.js";
 import { Router } from "express";
 
@@ -32,6 +46,6 @@ routeOrder.get("/sorting_center/:officeId/outbound", verifyAccessToken, getOrder
 
 routeOrder.put("/pickup-office/arrange-transport", verifyAccessToken, arrangeTransportPickup)
 
-routeOrder.put("/office/qr-scan", verifyAccessToken, scanShipment)
+routeOrder.put("/office/qr-scan", verifyAccessToken, scanShipmentOffice)
 
 export default routeOrder
