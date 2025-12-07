@@ -8,6 +8,7 @@ export interface IShipperDetail extends Document {
     shipperZoneId?: mongoose.Types.ObjectId;
     vehicleType?: VehicleType;
     status: boolean;
+    location?: { type: "Point"; coordinates: [number, number] };
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -18,6 +19,10 @@ const ShipperDetailSchema = new Schema<IShipperDetail>(
         shipperZoneId: { type: Schema.Types.ObjectId, ref: "ShipperZone" },
         vehicleType: { type: String, enum: ["bike", "car", "truck"] },
         status: { type: Boolean, default: true },
+        location: {
+            type: { type: String, enum: ["Point"], default: "Point" },
+            coordinates: { type: [Number], default: [0, 0] }
+        },
     },
     { timestamps: true }
 );

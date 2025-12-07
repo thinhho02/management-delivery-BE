@@ -1045,7 +1045,7 @@ export const arrangeTransportPickup = catchError(async (req, res) => {
                         $geometry: { type: "Point", coordinates: [longitude, latitude] }
                     }
                 }
-            }).lean();
+            }).select("_id").lean();
 
             if (!zone) {
                 failed.push({ _id: order._id, reason: "Không tìm thấy khu vực hoạt động" });
@@ -1169,8 +1169,77 @@ export const scanShipmentOffice = catchError(async (req, res) => {
         note: eventType === "arrival" ? `Đơn hàng đã đến bưu cục ${office?.name}` : `Đơn hàng đã rời bưu cục ${office?.name}`,
         timestamp: new Date(),
     });
-
     order.shipment.currentType = eventType;
+
+    const arranged: Record<string, any> = {};
+    const failed: Record<string, any> = {};
+    if (eventType === "arrival" && officeId === order.shipment.deliveryOfficeId.toString()) {
+        const customer = await UserModel.findById(order.customerId).lean();
+        if (!customer || !customer.location) {
+            failed.trackingCode = order.shipment.trackingCode
+            failed.reason = "Không tìm thấy vị trí người gửi"
+        } else {
+
+            const [longitude, latitude] = customer.location.coordinates;
+
+            const zone = await ShipperZone.findOne({
+                geometry: {
+                    $geoIntersects: {
+                        $geometry: { type: "Point", coordinates: [longitude, latitude] }
+                    }
+                }
+            }).select("_id").lean();
+
+            if (!zone) {
+                failed.trackingCode = order.shipment.trackingCode
+                failed.reason = "Không tìm thấy khu vực hoạt động"
+
+            } else {
+                const shipper = await ShipperDetailModel.findOne({
+                    shipperZoneId: zone._id,
+                    vehicleType: "bike",
+                    status: true
+                }).populate({ path: "employeeId", select: "_id name numberPhone" }).lean();
+
+                if (!shipper) {
+                    failed.trackingCode = order.shipment.trackingCode
+                    failed.reason = "Không có shipper cho khu vực này"
+                } else {
+
+                    // Tạo task
+                    await ShipperTaskModel.create({
+                        shipperDetailId: shipper._id,
+                        shipperMeta: {
+                            vehicleType: shipper.vehicleType,
+                            zoneId: zone._id.toString()
+                        },
+                        orderId: order._id,
+                        type: "delivery",
+                        status: "pending",
+                        assignedAt: new Date()
+                    });
+
+                    // UPDATE shipment
+                    order.shipment.events.push({
+                        eventType: "waiting_delivery",
+                        shipperDetailId: shipper._id,
+                        note: `Đã phân công shipper giao hàng - ${(shipper.employeeId as any)?.name} - ${(shipper.employeeId as any)?.numberPhone}`,
+                        timestamp: new Date(),
+                    });
+                    order.shipment.currentType = "waiting_delivery";
+
+
+                    Object.assign(arranged, {
+                        trackingCode: order.shipment.trackingCode,
+                        shipperName: (shipper.employeeId as any)?.name,
+                        numberPhone: (shipper.employeeId as any)?.numberPhone
+                    });
+                }
+
+            }
+        }
+
+    }
 
     if (eventType === "arrival" || eventType === "departure") {
         order.status = "in_transit";
@@ -1183,5 +1252,7 @@ export const scanShipmentOffice = catchError(async (req, res) => {
     return res.status(200).json({
         message: "Cập nhật trạng thái thành công",
         order: order,
+        arranged,
+        failed
     });
 });

@@ -64,7 +64,7 @@ const ShipmentEventSubSchema = new Schema({
         type: String,
         enum: [
             'created', 'waiting_pickup', 'pickup', 'arrival', 'departure',
-            'delivery_attempt', 'delivered', 'returned',
+            'delivery_attempt', 'waiting_delivery', 'delivered', 'returned',
             'cancelled', 'lost', 'damaged'
         ],
         required: true
@@ -84,7 +84,7 @@ const ShipmentSubSchema = new Schema({
         type: String,
         enum: [
             'created', 'waiting_pickup', 'pickup', 'arrival', 'departure',
-            'delivery_attempt', 'delivered', 'returned',
+            'delivery_attempt', 'waiting_delivery', 'delivered', 'returned',
             'cancelled', 'lost', 'damaged'
         ]
     },
