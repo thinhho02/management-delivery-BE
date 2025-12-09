@@ -58,9 +58,7 @@ export const registerBusiness = catchError(async (req, res) => {
         });
     }
     const roles = await RoleModel.find().lean()
-    console.log(roles)
     const role = roles.find((r) => r.name === "business")
-    console.log(role)
     const newBusiness = new BusinessModel({
         email,
         passwordHash: password,
@@ -300,7 +298,6 @@ export const loginBusiness = catchError(async (req, res) => {
         sameSite: "none",
         path: '/',
     }
-    console.log(cookieOpts)
     return res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 1 * 24 * 60 * 60 * 1000,

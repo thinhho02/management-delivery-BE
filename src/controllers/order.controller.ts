@@ -1,7 +1,7 @@
 import OrderModel from "@/models/order.js";
 import PostOfficeModel from "@/models/postOffice.js";
 import UserModel from "@/models/user.js";
-import { buildLabelHtml, buildValueHtml, findInboundOrdersForOffice, findOutboundOrdersForOffice, generateRoutePlan, getBestPostOffice, hasOfficeScanned, mapOrderResponse, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
+import { buildLabelHtml, buildValueHtml, emitOrderUpdateRealtime, findInboundOrdersForOffice, findOutboundOrdersForOffice, generateRoutePlan, getBestPostOffice, hasOfficeScanned, mapOrderResponse, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
 import catchError from "@/utils/catchError.js";
 import mongoose from "mongoose";
 import z from "zod";
@@ -276,7 +276,6 @@ export const createOrder = catchError(async (req, res) => {
     // ============================
     // 5. Tạo ORDER
     // ============================
-    console.log(productWeight)
     const qtyNum = Number(productQty);
     const weigtotalWeight = Number(productWeight);
 
@@ -355,7 +354,6 @@ export const bulkCancelOrders = catchError(async (req, res) => {
     }
 
     const ids = orderIds.map((id) => new mongoose.Types.ObjectId(id));
-    console.log(ids)
     // Lấy tất cả seller thuộc business
     const sellerIds = await UserModel.find({
         business: businessId,
@@ -387,7 +385,6 @@ export const bulkCancelOrders = catchError(async (req, res) => {
 
     const cancellableIds = orderCanceled.map((o) => o._id);
 
-    console.log(cancellableIds)
     const nonCancellable = orders.filter((o) => o.status !== "pending");
 
     const shipmentEvent = {
@@ -408,6 +405,35 @@ export const bulkCancelOrders = catchError(async (req, res) => {
                 }
             },
         );
+        const updatedOrders = await OrderModel.find({
+        _id: { $in: cancellableIds }
+    })
+        .populate([
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            { path: "routePlan.from" },
+            { path: "routePlan.to" },
+
+            { path: "shipment.events.officeId" },
+            { path: "shipment.events.shipperDetailId" },
+
+            {
+                path: "shipment.events.shipperDetailId",
+                populate: { path: "employeeId" }
+            }
+        ])
+        .lean();
+        Promise.resolve().then(() => {
+        Promise.all(
+            updatedOrders.map(order =>
+                emitOrderUpdateRealtime(order, shipmentEvent)
+            )
+        ).catch(console.error);
+    });
     }
 
     return res.status(200).json({
@@ -535,6 +561,7 @@ export const getOrdersByBusiness = catchError(async (req, res) => {
     const page = Number(req.query.page) || 1;
     const status = req.query.status || ""
     const printed = req.query.printed || "all";
+    const pick = req.query?.pick || "";
     const limit = 10;
     const skip = (page - 1) * limit;
 
@@ -563,8 +590,40 @@ export const getOrdersByBusiness = catchError(async (req, res) => {
     } else if (printed === "not_printed") {
         query.printed = false;
     }
+    if (pick) {
+        query.pick = pick;
+    }
+
     // Query orders
     const orders = await OrderModel.find(query)
+        .populate([
+            // Người nhận / người gửi
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            // Populate bưu cục nhận – giao
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            // Populate routePlan
+            // { path: "routePlan.from" },
+            // { path: "routePlan.to" },
+
+            // Populate office trong event
+            { path: "shipment.events.officeId" },
+
+            // Populate shipperDetail trong event
+            { path: "shipment.events.shipperDetailId" },
+
+            // Populate sâu employeeId trong shipperDetail
+            {
+                path: "shipment.events.shipperDetailId",
+                populate: {
+                    path: "employeeId",
+                    // model: "Employee"
+                }
+            }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -575,22 +634,14 @@ export const getOrdersByBusiness = catchError(async (req, res) => {
     const pickupOfficeIds = orders.map(o => o?.shipment?.pickupOfficeId).filter(Boolean);
     const deliveryOfficeIds = orders.map(o => o?.shipment?.deliveryOfficeId).filter(Boolean);
 
-    // Load bưu cục chỉ 1 lần
-    const postOffices = await PostOfficeModel
-        .find({ _id: { $in: [...pickupOfficeIds, ...deliveryOfficeIds] } })
-        .lean();
-
-    const mapOffice = new Map(postOffices.map(p => [p._id.toString(), p]));
 
     // Format cho FE
     const result = orders.map(o => {
         const pickup = o.shipment?.pickupOfficeId
-            ? mapOffice.get(o.shipment.pickupOfficeId.toString())
-            : null;
+
 
         const delivery = o.shipment?.deliveryOfficeId
-            ? mapOffice.get(o.shipment.deliveryOfficeId.toString())
-            : null;
+
 
         return {
             _id: o._id,
@@ -599,7 +650,7 @@ export const getOrdersByBusiness = catchError(async (req, res) => {
             shipFee: o.shipFee || 0,
             status: o.status,
             printed: o?.printed || false,
-
+            pick: o.pick,
             pickupOffice: pickup
                 ? {
                     _id: pickup._id,
@@ -616,7 +667,14 @@ export const getOrdersByBusiness = catchError(async (req, res) => {
                     code: delivery.code,
                     address: delivery.address,
                 }
-                : null
+                : null,
+            customer: {
+                _id: (o.customerId as any)?._id,
+                name: (o.customerId as any)?.name,
+                phone: (o.customerId as any)?.numberPhone,
+                address: (o.customerId as any)?.address,
+            },
+            events: o.shipment?.events
         };
     });
 
@@ -667,14 +725,34 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
     const order = await OrderModel.findOne({
         _id: orderId,
         sellerId: { $in: sellerIds },
-    })
-        .populate("sellerId")
-        .populate("customerId")
-        .populate("shipment.events.officeId")      // ✔ cần để có office.name + address
-        .populate("shipment.events.shipperDetailId")
-        .populate("shipment.events.shipperDetailId.employeeId")
-        .populate("shipment.pickupOfficeId")
-        .populate("shipment.deliveryOfficeId")
+    }).populate([
+        // Người nhận / người gửi
+        { path: "customerId" },
+        { path: "sellerId" },
+
+        // Populate bưu cục nhận – giao
+        { path: "shipment.pickupOfficeId" },
+        { path: "shipment.deliveryOfficeId" },
+
+        // Populate routePlan
+        // { path: "routePlan.from" },
+        // { path: "routePlan.to" },
+
+        // Populate office trong event
+        { path: "shipment.events.officeId" },
+
+        // Populate shipperDetail trong event
+        { path: "shipment.events.shipperDetailId" },
+
+        // Populate sâu employeeId trong shipperDetail
+        {
+            path: "shipment.events.shipperDetailId",
+            populate: {
+                path: "employeeId",
+                // model: "Employee"
+            }
+        }
+    ])
         .lean();
 
     if (!order) {
@@ -772,17 +850,38 @@ export const getOrdersForPickupOffice = catchError(async (req, res) => {
     }
 
     const orders = await OrderModel.find(filter)
-        .populate("sellerId")
-        .populate("customerId")
-        // Route plan (from / to)
-        .populate("routePlan.from")
-        .populate("routePlan.to")
-        .populate("shipment.events.officeId")
+        .populate([
+            // Người nhận / người gửi
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            // Populate bưu cục nhận – giao
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            // Populate routePlan
+            { path: "routePlan.from" },
+            { path: "routePlan.to" },
+
+            // Populate office trong event
+            { path: "shipment.events.officeId" },
+
+            // Populate shipperDetail trong event
+            // { path: "shipment.events.shipperDetailId" },
+
+            // // Populate sâu employeeId trong shipperDetail
+            // {
+            //     path: "shipment.events.shipperDetailId",
+            //     populate: {
+            //         path: "employeeId",
+            //         // model: "Employee"
+            //     }
+            // }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean();
-    console.log(orders)
     const total = await OrderModel.countDocuments(filter);
 
     // Map về dạng FE cần
@@ -827,16 +926,38 @@ export const getOrdersForDeliveryOffice = catchError(async (req, res) => {
     }
 
     const orders = await OrderModel.find(filter)
-        .populate("sellerId")
-        .populate("customerId")
-        // Route plan (from / to)
-        .populate("routePlan.from")
-        .populate("routePlan.to")
+        .populate([
+            // Người nhận / người gửi
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            // Populate bưu cục nhận – giao
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            // Populate routePlan
+            { path: "routePlan.from" },
+            { path: "routePlan.to" },
+
+            // Populate office trong event
+            { path: "shipment.events.officeId" },
+
+            // Populate shipperDetail trong event
+            // { path: "shipment.events.shipperDetailId" },
+
+            // // Populate sâu employeeId trong shipperDetail
+            // {
+            //     path: "shipment.events.shipperDetailId",
+            //     populate: {
+            //         path: "employeeId",
+            //         // model: "Employee"
+            //     }
+            // }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean();
-    console.log(orders)
     const total = await OrderModel.countDocuments(filter);
 
     // Map về dạng FE cần
@@ -867,11 +988,34 @@ export const getOrderByHubInbound = catchError(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const orders = await OrderModel.find({ "routePlan.to": officeId })
-        .populate("sellerId")
-        .populate("customerId")
-        .populate("routePlan.from")
-        .populate("routePlan.to")
-        .populate("shipment.events.officeId")
+        .populate([
+            // Người nhận / người gửi
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            // Populate bưu cục nhận – giao
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            // Populate routePlan
+            { path: "routePlan.from" },
+            { path: "routePlan.to" },
+
+            // Populate office trong event
+            { path: "shipment.events.officeId" },
+
+            // Populate shipperDetail trong event
+            // { path: "shipment.events.shipperDetailId" },
+
+            // // Populate sâu employeeId trong shipperDetail
+            // {
+            //     path: "shipment.events.shipperDetailId",
+            //     populate: {
+            //         path: "employeeId",
+            //         // model: "Employee"
+            //     }
+            // }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -904,12 +1048,34 @@ export const getOrderByHubOutbound = catchError(async (req, res) => {
 
     const orders = await OrderModel.find({
         "routePlan.to": officeId
-    })
-        .populate("sellerId")
-        .populate("customerId")
-        .populate("routePlan.from")
-        .populate("routePlan.to")
-        .populate("shipment.events.officeId")
+    }).populate([
+        // Người nhận / người gửi
+        { path: "customerId" },
+        { path: "sellerId" },
+
+        // Populate bưu cục nhận – giao
+        { path: "shipment.pickupOfficeId" },
+        { path: "shipment.deliveryOfficeId" },
+
+        // Populate routePlan
+        { path: "routePlan.from" },
+        { path: "routePlan.to" },
+
+        // Populate office trong event
+        { path: "shipment.events.officeId" },
+
+        // Populate shipperDetail trong event
+        // { path: "shipment.events.shipperDetailId" },
+
+        // // Populate sâu employeeId trong shipperDetail
+        // {
+        //     path: "shipment.events.shipperDetailId",
+        //     populate: {
+        //         path: "employeeId",
+        //         // model: "Employee"
+        //     }
+        // }
+    ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -940,11 +1106,34 @@ export const getOrderBySortingInbound = catchError(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const orders = await OrderModel.find({ "routePlan.to": officeId })
-        .populate("sellerId")
-        .populate("customerId")
-        .populate("routePlan.from")
-        .populate("routePlan.to")
-        .populate("shipment.events.officeId")
+        .populate([
+            // Người nhận / người gửi
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            // Populate bưu cục nhận – giao
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            // Populate routePlan
+            { path: "routePlan.from" },
+            { path: "routePlan.to" },
+
+            // Populate office trong event
+            { path: "shipment.events.officeId" },
+
+            // Populate shipperDetail trong event
+            // { path: "shipment.events.shipperDetailId" },
+
+            // // Populate sâu employeeId trong shipperDetail
+            // {
+            //     path: "shipment.events.shipperDetailId",
+            //     populate: {
+            //         path: "employeeId",
+            //         // model: "Employee"
+            //     }
+            // }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -976,11 +1165,34 @@ export const getOrderBySortingOutbound = catchError(async (req, res) => {
     const orders = await OrderModel.find({
         "routePlan.to": officeId
     })
-        .populate("sellerId")
-        .populate("customerId")
-        .populate("routePlan.from")
-        .populate("routePlan.to")
-        .populate("shipment.events.officeId")
+        .populate([
+            // Người nhận / người gửi
+            { path: "customerId" },
+            { path: "sellerId" },
+
+            // Populate bưu cục nhận – giao
+            { path: "shipment.pickupOfficeId" },
+            { path: "shipment.deliveryOfficeId" },
+
+            // Populate routePlan
+            { path: "routePlan.from" },
+            { path: "routePlan.to" },
+
+            // Populate office trong event
+            { path: "shipment.events.officeId" },
+
+            // Populate shipperDetail trong event
+            // { path: "shipment.events.shipperDetailId" },
+
+            // // Populate sâu employeeId trong shipperDetail
+            // {
+            //     path: "shipment.events.shipperDetailId",
+            //     populate: {
+            //         path: "employeeId",
+            //         // model: "Employee"
+            //     }
+            // }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -1084,6 +1296,12 @@ export const arrangeTransportPickup = catchError(async (req, res) => {
             // =====================
             // 4) Update order
             // =====================
+            const event = {
+                eventType: "waiting_pickup",
+                timestamp: new Date(),
+                shipperDetailId: shipper._id,
+                note: "Đã phân công shipper đến lấy hàng"
+            }
             const updatedOrder = await OrderModel.findOneAndUpdate(
                 { _id: order._id },
                 {
@@ -1092,12 +1310,7 @@ export const arrangeTransportPickup = catchError(async (req, res) => {
                         "shipment.currentType": "waiting_pickup"
                     },
                     $push: {
-                        "shipment.events": {
-                            eventType: "waiting_pickup",
-                            timestamp: new Date(),
-                            shipperDetailId: shipper._id,
-                            note: "Đã phân công shipper đến lấy hàng"
-                        }
+                        "shipment.events": event
                     }
                 },
                 { new: true }
@@ -1111,18 +1324,40 @@ export const arrangeTransportPickup = catchError(async (req, res) => {
                 })
                 .lean();
 
-            arranged.push({
-                _id: updatedOrder?._id,
-                trackingCode: updatedOrder?.shipment.trackingCode,
-                status: updatedOrder?.status,
-                currentType: updatedOrder?.shipment.currentType,
-                events: updatedOrder?.shipment.events,
-                assigned: {
-                    shipperDetailId: shipper._id,
-                    vehicleType: shipper.vehicleType,
-                    zoneId: zone._id.toString()
-                }
-            });
+            arranged.push(updatedOrder?._id);
+            const newOrderUpdate = await OrderModel.findById(updatedOrder?._id)
+                .populate([
+                    // Người nhận / người gửi
+                    { path: "customerId" },
+                    { path: "sellerId" },
+
+                    // Populate bưu cục nhận – giao
+                    { path: "shipment.pickupOfficeId" },
+                    { path: "shipment.deliveryOfficeId" },
+
+                    // Populate routePlan
+                    { path: "routePlan.from" },
+                    { path: "routePlan.to" },
+
+                    // Populate office trong event
+                    { path: "shipment.events.officeId" },
+
+                    // Populate shipperDetail trong event
+                    { path: "shipment.events.shipperDetailId" },
+
+                    // // Populate sâu employeeId trong shipperDetail
+                    {
+                        path: "shipment.events.shipperDetailId",
+                        populate: {
+                            path: "employeeId",
+                            // model: "Employee"
+                        }
+                    }
+                ])
+                .lean()
+            Promise.resolve().then(() =>
+                emitOrderUpdateRealtime(newOrderUpdate, event)
+            ).catch(console.error);
 
         } catch (err) {
             failed.push({ _id: order._id, reason: "Lỗi server" });

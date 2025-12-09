@@ -1,6 +1,7 @@
 import type { IOrder, ShipmentEventType } from "@/models/order.js";
 import OrderModel from "@/models/order.js";
 import PostOfficeModel from "@/models/postOffice.js";
+import { io } from "@/socket/index.js";
 import { AppThrowError } from "@/utils/AppThrowError.js";
 import { sendMail } from "@/utils/nodemailer.js";
 import dayjs from "dayjs";
@@ -1067,5 +1068,94 @@ export function findOutboundOrdersForOffice(o: any, officeIdStr: string) {
 
 }
 
+
+export function emitOrderUpdateRealtime(order: any, event: any) {
+  if (!order) return;
+
+  const orderId = order._id.toString();
+  const businessId = order.sellerId?.business?.toString();
+
+  // Shipper hiện tại (nếu có)
+  const shipperId = event?.shipperDetailId?.toString();
+
+  // Pickup & Delivery office
+  const pickupOfficeId = order.shipment?.pickupOfficeId?._id?.toString();
+  const deliveryOfficeId = order.shipment?.deliveryOfficeId?._id?.toString();
+
+  // Các office trong routePlan
+  const routeOffices: any[] = [];
+  if (Array.isArray(order.routePlan)) {
+    order.routePlan.forEach((step: any) => {
+      if (step.from?._id) routeOffices.push(step.from._id.toString());
+      if (step.to?._id) routeOffices.push(step.to._id.toString());
+    });
+  }
+
+  const uniqueOffices = [...new Set(routeOffices)]; // loại trùng
+
+  //  .populate("customerId")
+  //         .populate("shipment.events.officeId")      // ✔ cần để có office.name + address
+  //         .populate("shipment.events.shipperDetailId")
+  //         .populate("shipment.events.shipperDetailId.employeeId")
+  //         .populate("shipment.pickupOfficeId")
+  //         .populate("shipment.deliveryOfficeId")
+
+  // ========================================
+  //  GỬI TỚI BUSINESS — chủ shop
+  // ========================================
+  if (businessId) {
+    const payload = {
+      _id: orderId,
+      status: order.status,
+      printed: order.printed,
+      currentType: order.shipment.currentType,
+      events: order.shipment?.events,
+    };
+    io.to(`business:${businessId}`).emit("order:update", payload);
+  }
+
+  // ========================================
+  // GỬI TỚI SHIPPER — đang xử lý đơn hàng
+  // ========================================
+  // if (shipperId) {
+  //   io.to(`shipper:${shipperId}`).emit("order:update", payload);
+  // }
+
+  // ========================================
+  // GỬI TỚI BƯU CỤC PICKUP / DELIVERY
+  // ========================================
+  if (pickupOfficeId) {
+    const payload = {
+      _id: orderId,
+      status: order.status,
+      currentType: order.shipment.currentType,
+      events: order.shipment?.events,
+    };
+    io.to(`post_office:${pickupOfficeId}`).emit("order:update", payload);
+  }
+
+  if (deliveryOfficeId) {
+    const payload = {
+      _id: orderId,
+      status: order.status,
+      currentType: order.shipment.currentType,
+      events: order.shipment?.events,
+    };
+    io.to(`post_office:${deliveryOfficeId}`).emit("order:update", payload);
+  }
+
+  // ========================================
+  // GỬI TỚI TẤT CẢ BƯU CỤC TRONG ROUTE PLAN
+  // ========================================
+  // for (const officeId of uniqueOffices) {
+  //   io.to(`office:${officeId}`).emit("order:update", payload);
+  // }
+
+  // // ========================================
+  // // Cuối cùng, gửi riêng theo room orderId
+  // // FE nào đang xem Detail Order sẽ nhận
+  // // ========================================
+  // io.to(`order:${orderId}`).emit("order:update", payload);
+}
 
 

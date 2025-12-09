@@ -58,7 +58,6 @@ export const createProvince = catchError(async (req, res) => {
         return res.status(400).json({ message: "File too large (max 5MB)" });
 
     const filePath = `/${file.originalname}`;
-    console.log(file)
     fs.writeFileSync(filePath, file.buffer)
     const raw = fs.readFileSync(filePath, { encoding: "utf8" }) as string;
     const json = JSON.parse(raw);

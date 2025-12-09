@@ -11,7 +11,6 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 
 export const checkSession = catchError(async (req, res) => {
     const { refreshToken } = req.cookies;
-    console.log(refreshToken)
     if (!refreshToken) {
         return res.status(401).json({ loggedIn: false });
     }
@@ -22,7 +21,6 @@ export const checkSession = catchError(async (req, res) => {
         return res.status(401).json({ loggedIn: false });
     }
     const session = await SessionModel.findById(decoded.sid);
-    console.log(!session || !session.refreshTokenExp || session.refreshTokenExp.getTime() < Date.now())
     if (!session || !session.isActive || !session.refreshTokenExp || session.refreshTokenExp.getTime() < Date.now()) {
         return res.status(401).json({ loggedIn: false });
     }
@@ -42,7 +40,6 @@ export const checkSession = catchError(async (req, res) => {
 
 export const getUserSession = catchError(async (req, res) => {
     const { refreshToken } = req.cookies;
-    console.log(req.cookies)
     if (!refreshToken) {
         return res.status(401).json({ loggedIn: false });
     }
@@ -53,7 +50,6 @@ export const getUserSession = catchError(async (req, res) => {
         return res.status(401).json({ loggedIn: false });
     }
     const session = await SessionModel.findById(decoded.sid);
-    console.log(!session || !session.refreshTokenExp || session.refreshTokenExp.getTime() < Date.now())
     if (!session || !session.isActive || !session.refreshTokenExp || session.refreshTokenExp.getTime() < Date.now()) {
         return res.status(401).json({ loggedIn: false });
     }
@@ -110,7 +106,6 @@ export const handleRefreshToken = catchError(async (req, res) => {
     } catch (err) {
         return res.status(401).json({ message: "Invalid or expired refresh token" });
     }
-    console.log("đây là token", decoded)
     // Tìm session theo decoded.sid
     const session = await SessionModel.findById(decoded.sid);
     if (!session || !session.isActive) {
@@ -155,8 +150,7 @@ export const handleRefreshToken = catchError(async (req, res) => {
 
     const roleAccount = findAccount.role.toString()
     // Tạo Token mới
-    console.log(findAccount)
-    console.log(session)
+ 
 
     const newAccessToken = generateAccessToken({
         sub: findAccount._id.toString(),

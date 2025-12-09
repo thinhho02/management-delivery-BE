@@ -194,7 +194,6 @@ export const getPostOffices = catchError(async (req, res) => {
 export const updatePost = catchError(async (req, res) => {
     const payload = PostOfficeSchemaZ.parse(req.body)
     const { postId } = req.params
-    console.log(payload)
 
     const location = payload.location
         ? {

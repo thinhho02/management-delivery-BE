@@ -263,7 +263,6 @@ export const loginInternal = catchError(async (req, res) => {
         sameSite: "none",
         path: '/',
     }
-    console.log(cookieOpts)
     return res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         maxAge: rememberMe ? 365 * 24 * 60 * 60 * 1000 : 1 * 24 * 60 * 60 * 1000,

@@ -66,7 +66,6 @@ EmployeeSchema.pre("save", async function (next, option) {
 })
 
 EmployeeSchema.methods.isPasswordMatch = async function (password: string) {
-    console.log(password)
 
     return await bcrypt.compare(password, this.passwordHash);
 };
