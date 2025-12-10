@@ -13,6 +13,7 @@ export type ShipmentEventType =
     | 'pickup'
     | 'arrival'
     | 'departure'
+    | 'transferring'
     | 'delivery_attempt'
     | 'delivered'
     | 'returned'
@@ -63,7 +64,7 @@ const ShipmentEventSubSchema = new Schema({
     eventType: {
         type: String,
         enum: [
-            'created', 'waiting_pickup', 'pickup', 'arrival', 'departure',
+            'created', 'waiting_pickup', 'pickup', 'arrival', 'departure', 'transferring',
             'delivery_attempt', 'waiting_delivery', 'delivered', 'returned',
             'cancelled', 'lost', 'damaged'
         ],
@@ -83,7 +84,7 @@ const ShipmentSubSchema = new Schema({
     currentType: {
         type: String,
         enum: [
-            'created', 'waiting_pickup', 'pickup', 'arrival', 'departure',
+            'created', 'waiting_pickup', 'pickup', 'arrival', 'transferring', 'departure',
             'delivery_attempt', 'waiting_delivery', 'delivered', 'returned',
             'cancelled', 'lost', 'damaged'
         ]

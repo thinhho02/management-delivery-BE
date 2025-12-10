@@ -735,8 +735,8 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
         { path: "shipment.deliveryOfficeId" },
 
         // Populate routePlan
-        // { path: "routePlan.from" },
-        // { path: "routePlan.to" },
+        { path: "routePlan.from" },
+        { path: "routePlan.to" },
 
         // Populate office trong event
         { path: "shipment.events.officeId" },
@@ -770,7 +770,7 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
         status: order.status,
         shipFee: order.shipFee || 0,
         cod: order.cod,
-
+        routePlan : order.routePlan,
         // số tiền COD: nếu không phải đơn COD thì = 0
         amountCod: order.cod ? (order.totalAmount || 0) : 0,
 
@@ -801,23 +801,7 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
             pickupOffice: order.shipment?.pickupOfficeId || null,
             deliveryOffice: order.shipment?.deliveryOfficeId || null,
 
-            events: (order.shipment?.events || []).map((ev: any) => ({
-                eventType: ev.eventType,          // ✔ lấy trực tiếp từ embed
-                eventNote: ev.note || null,  // ✔ nội dung mô tả event
-
-                timestamp: ev.timestamp,
-                officeId: ev?.officeId?._id,
-                officeName: ev?.officeId?.name || null,
-                officeAddress: ev?.officeId?.address || null,
-                officeLocation: ev?.officeId?.location || null,
-
-                shipperId: ev?.shipperDetailId?.id,
-                shipperName: ev?.shipperDetailId?.employeeId?.name,
-                shipperNumberPhone: ev?.shipperDetailId?.employeeId?.numberPhone,
-
-
-                proofImages: ev.proofImages || [],
-            })),
+            events: order.shipment?.events
         }
     };
 

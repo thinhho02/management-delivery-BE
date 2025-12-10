@@ -996,12 +996,12 @@ export function mapOrderResponse(o: any) {
 
     sender: {
       name: o.sellerId?.name,
-      phone: o.sellerId?.numberPhone,
+      numberPhone: o.sellerId?.numberPhone,
     },
 
     receiver: {
       name: o.customerId?.name,
-      phone: o.customerId?.numberPhone,
+      numberPhone: o.customerId?.numberPhone,
     },
 
     receiverAddress: o.customerId?.address,
