@@ -1177,6 +1177,7 @@ export async function sendDeliverySuccessEmail(order: IOrder) {
   const trackingCode = order.shipment.trackingCode;
 
   await sendMail({
+    from: `"Hệ thống giao hàng" <${process.env.SMTP_USER}>`,
     to: customer.email,
     subject: `📦 Đơn hàng ${trackingCode} đã giao thành công`,
     html: `
