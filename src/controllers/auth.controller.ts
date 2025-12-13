@@ -57,7 +57,7 @@ export const getUserSession = catchError(async (req, res) => {
     const findAccount = session?.business
         ? await BusinessModel.findById(session.business).select("id type name email role status").lean()
         : session?.employee
-            ? await EmployeeModel.findById(session.employee).select("id name email idNumber numberPhone address officeId role status").lean()
+            ? await EmployeeModel.findById(session.employee).select("id name email idNumber numberPhone address officeId role status").populate("officeId").lean()
             : undefined
 
     if (!findAccount || !findAccount.status) {

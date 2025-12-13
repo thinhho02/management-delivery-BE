@@ -6,6 +6,7 @@ const SchemaSocketPost = z.object({
     postId: z.string().min(1, "Missing PostId"),
     shipperId: z.string().min(1, "Missing ShipperId"),
     businessId: z.string().min(1, "Missing BusinessId"),
+    orderId: z.string().min(1, "Missing OrderId"),
 })
 
 export const employeeJoinPost = (io: Server, socket: Socket) => {
@@ -66,6 +67,27 @@ export const businessJoin = (io: Server, socket: Socket) => {
         const pickBusinessId = SchemaSocketPost.pick({ businessId: true })
         const { businessId } = pickBusinessId.parse(payload)
         const roomName = `business:${businessId}`;
+        socket.leave(roomName);
+
+        console.log(`Socket ${socket.id} left room ${roomName}`);
+        console.log(io.sockets.adapter.rooms);
+    }));
+}
+
+export const orderJoin = (io: Server, socket: Socket) => {
+    socket.on("join:order_join", socketErrorHandler(socket, (payload) => {
+        const pickOrderId = SchemaSocketPost.pick({ orderId: true })
+        const { orderId } = pickOrderId.parse(payload)
+        const roomName = `order:${orderId}`;
+        socket.join(roomName)
+        console.log(`Socket ${socket.id} joined room ${roomName}`);
+        console.log(io.sockets.adapter.rooms);
+    }))
+
+    socket.on("leave:order_join", socketErrorHandler(socket, (payload) => {
+        const pickOrderId = SchemaSocketPost.pick({ orderId: true })
+        const { orderId } = pickOrderId.parse(payload)
+        const roomName = `order:${orderId}`;
         socket.leave(roomName);
 
         console.log(`Socket ${socket.id} left room ${roomName}`);

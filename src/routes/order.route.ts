@@ -11,6 +11,8 @@ import {
     getOrdersByBusiness,
     getOrdersForDeliveryOffice,
     getOrdersForPickupOffice,
+    scanDeliveredByShipper,
+    scanPickupByShipper,
     scanShipmentOffice
 } from "@/controllers/order.controller.js";
 import { verifyAccessToken } from "@/middlewares/verifyAccessToken.js";
@@ -47,5 +49,10 @@ routeOrder.get("/sorting_center/:officeId/outbound", verifyAccessToken, getOrder
 routeOrder.put("/pickup-office/arrange-transport", verifyAccessToken, arrangeTransportPickup)
 
 routeOrder.put("/office/qr-scan", verifyAccessToken, scanShipmentOffice)
+
+
+routeOrder.put("/shipper/qr-scan-pickup", verifyAccessToken, scanPickupByShipper)
+routeOrder.put("/shipper/qr-scan-delivered", verifyAccessToken, scanDeliveredByShipper)
+
 
 export default routeOrder

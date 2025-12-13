@@ -15,7 +15,7 @@ export interface IShipperDetail extends Document {
 
 const ShipperDetailSchema = new Schema<IShipperDetail>(
     {
-        employeeId: { type: Schema.Types.ObjectId, ref: "Employee", required: true },
+        employeeId: { type: Schema.Types.ObjectId, ref: "Employee", required: true, index: 1 },
         shipperZoneId: { type: Schema.Types.ObjectId, ref: "ShipperZone" },
         vehicleType: { type: String, enum: ["bike", "car", "truck"] },
         status: { type: Boolean, default: true },

@@ -1,7 +1,7 @@
 import OrderModel from "@/models/order.js";
 import PostOfficeModel from "@/models/postOffice.js";
 import UserModel from "@/models/user.js";
-import { buildLabelHtml, buildValueHtml, emitOrderUpdateRealtime, findInboundOrdersForOffice, findOutboundOrdersForOffice, generateRoutePlan, getBestPostOffice, hasOfficeScanned, mapOrderResponse, maskPhone, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
+import { buildLabelHtml, buildValueHtml, emitOrderUpdateRealtime, findInboundOrdersForOffice, findOutboundOrdersForOffice, generateRoutePlan, getBestPostOffice, hasOfficeScanned, mapOrderResponse, maskPhone, sendDeliverySuccessEmail, sendOrderSuccessEmail, validateOfficeRoute } from "@/services/order.service.js";
 import catchError from "@/utils/catchError.js";
 import mongoose from "mongoose";
 import z from "zod";
@@ -406,34 +406,34 @@ export const bulkCancelOrders = catchError(async (req, res) => {
             },
         );
         const updatedOrders = await OrderModel.find({
-        _id: { $in: cancellableIds }
-    })
-        .populate([
-            { path: "customerId" },
-            { path: "sellerId" },
+            _id: { $in: cancellableIds }
+        })
+            .populate([
+                { path: "customerId" },
+                { path: "sellerId" },
 
-            { path: "shipment.pickupOfficeId" },
-            { path: "shipment.deliveryOfficeId" },
+                { path: "shipment.pickupOfficeId" },
+                { path: "shipment.deliveryOfficeId" },
 
-            { path: "routePlan.from" },
-            { path: "routePlan.to" },
+                { path: "routePlan.from" },
+                { path: "routePlan.to" },
 
-            { path: "shipment.events.officeId" },
-            { path: "shipment.events.shipperDetailId" },
+                { path: "shipment.events.officeId" },
+                { path: "shipment.events.shipperDetailId" },
 
-            {
-                path: "shipment.events.shipperDetailId",
-                populate: { path: "employeeId" }
-            }
-        ])
-        .lean();
+                {
+                    path: "shipment.events.shipperDetailId",
+                    populate: { path: "employeeId" }
+                }
+            ])
+            .lean();
         Promise.resolve().then(() => {
-        Promise.all(
-            updatedOrders.map(order =>
-                emitOrderUpdateRealtime(order, shipmentEvent)
-            )
-        ).catch(console.error);
-    });
+            Promise.all(
+                updatedOrders.map(order =>
+                    emitOrderUpdateRealtime(order, shipmentEvent)
+                )
+            ).catch(console.error);
+        });
     }
 
     return res.status(200).json({
@@ -770,7 +770,7 @@ export const getOrderDetailByBusiness = catchError(async (req, res) => {
         status: order.status,
         shipFee: order.shipFee || 0,
         cod: order.cod,
-        routePlan : order.routePlan,
+        routePlan: order.routePlan,
         // số tiền COD: nếu không phải đơn COD thì = 0
         amountCod: order.cod ? (order.totalAmount || 0) : 0,
 
@@ -1392,7 +1392,7 @@ export const scanShipmentOffice = catchError(async (req, res) => {
 
     const arranged: Record<string, any> = {};
     const failed: Record<string, any> = {};
-    if (eventType === "arrival" && officeId === order.shipment.deliveryOfficeId.toString()) {
+    if (eventType === "departure" && officeId === order.shipment.deliveryOfficeId.toString()) {
         const customer = await UserModel.findById(order.customerId).lean();
         if (!customer || !customer.location) {
             failed.trackingCode = order.shipment.trackingCode
@@ -1473,5 +1473,141 @@ export const scanShipmentOffice = catchError(async (req, res) => {
         order: order,
         arranged,
         failed
+    });
+});
+
+
+
+export const scanPickupByShipper = catchError(async (req, res) => {
+    const { trackingCode, shipperDetailId, eventType } = req.body;
+
+    if (!trackingCode) {
+        return res.status(400).json({ message: "Thiếu trackingCode" });
+    }
+
+    // 1️⃣ Tìm đơn hàng
+    const order = await OrderModel.findOne({
+        "shipment.trackingCode": trackingCode
+    });
+
+
+    if (!order) {
+        return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+    const lastEvent = order?.shipment.events.at(-1)
+
+    if (lastEvent.eventType === "pickup") {
+        return res.status(400).json({ message: "Đơn hàng đã cập nhật lấy hàng" });
+    }
+
+    // 2️⃣ Tìm task delivery của shipper
+    const task = await ShipperTaskModel.findOne({
+        orderId: order.id,
+        shipperDetailId,
+    });
+
+    if (!task) {
+        return res.status(403).json({
+            message: "Đơn hàng không thuộc nhiệm vụ của shipper hoặc đã được nhận"
+        });
+    }
+
+    // 3️⃣ Update task → in_progress
+    task.status = "completed";
+    task.completedAt = new Date();
+    await task.save();
+
+    // 4️⃣ Push shipment event
+    order.shipment.events.push({
+        eventType,
+        shipperDetailId,
+        timestamp: new Date(),
+        note: "Lấy hàng thành công"
+    });
+
+    order.shipment.currentType = "pickup";
+    order.status = "in_transit";
+
+    await order.save();
+
+    // 5️⃣ (optional) realtime
+    // Promise.resolve().then(() => {
+    //     emitOrderUpdateRealtime(order, {
+    //         eventType: "pickup",
+    //         shipperDetailId
+    //     });
+    // });
+
+    return res.status(200).json({
+        message: "Shipper đã nhận hàng thành công",
+        orderId: order._id
+    });
+});
+
+export const scanDeliveredByShipper = catchError(async (req, res) => {
+    const { trackingCode, shipperDetailId, eventType } = req.body;
+
+    if (!trackingCode) {
+        return res.status(400).json({ message: "Thiếu trackingCode" });
+    }
+
+    // 1️⃣ Tìm đơn hàng
+    const order = await OrderModel.findOne({
+        "shipment.trackingCode": trackingCode
+    });
+
+    if (!order) {
+        return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+    const lastEvent = order?.shipment.events.at(-1)
+
+    if (lastEvent.eventType === "delivered") {
+        return res.status(400).json({ message: "Đơn hàng đã giao hàng thành công" });
+    }
+    // 2️⃣ Check task đang giao
+    const task = await ShipperTaskModel.findOne({
+        orderId: order._id,
+        shipperDetailId,
+    });
+
+    if (!task) {
+        return res.status(403).json({
+            message: "Đơn hàng không ở trạng thái đang giao bởi shipper này"
+        });
+    }
+
+    // 3️⃣ Hoàn tất task
+    task.status = "completed";
+    task.completedAt = new Date();
+    await task.save();
+
+    // 4️⃣ Update order + event
+    order.shipment.events.push({
+        eventType,
+        shipperDetailId,
+        timestamp: new Date(),
+        note: "Giao hàng thành công"
+    });
+
+    order.shipment.currentType = "delivered";
+    order.status = "delivered";
+
+    await order.save();
+
+
+    Promise.resolve()
+        .then(() => sendDeliverySuccessEmail(order))
+        .catch(console.error);
+    // 5️⃣ realtime
+    // Promise.resolve().then(() => {
+    //     emitOrderUpdateRealtime(order, {
+    //         eventType: "delivered",
+    //         shipperDetailId
+    //     });
+    // });
+
+    return res.status(200).json({
+        message: "Giao hàng thành công",
+        orderId: order._id
     });
 });

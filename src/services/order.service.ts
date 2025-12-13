@@ -9,7 +9,6 @@ import QRCode from "qrcode";
 
 
 
-
 export const getBestPostOffice = async (
   wardId: string,
   provinceId: string,
@@ -1159,3 +1158,59 @@ export function emitOrderUpdateRealtime(order: any, event: any) {
 }
 
 
+export async function sendDeliverySuccessEmail(order: IOrder) {
+  if (!order?.customerId || !(order.customerId as any).email) {
+    return;
+  }
+
+  const customer = order.customerId as any;
+  const seller = order.sellerId as any;
+
+  const deliveredEvent = order.shipment.events.find(
+    (e: any) => e.eventType === "delivered"
+  );
+
+  const deliveredAt = deliveredEvent?.timestamp
+    ? dayjs(deliveredEvent.timestamp).format('YYYY-MM-DD HH:mm:ss')
+    : dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss');
+
+  const trackingCode = order.shipment.trackingCode;
+
+  await sendMail({
+    to: customer.email,
+    subject: `📦 Đơn hàng ${trackingCode} đã giao thành công`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6">
+        <h2 style="color:#16a34a">🎉 Giao hàng thành công!</h2>
+
+        <p>Xin chào <b>${customer.name}</b>,</p>
+
+        <p>Đơn hàng của bạn đã được giao thành công.</p>
+
+        <table style="margin-top:12px">
+          <tr>
+            <td><b>Mã vận đơn:</b></td>
+            <td>${trackingCode}</td>
+          </tr>
+          <tr>
+            <td><b>Thời gian giao:</b></td>
+            <td>${deliveredAt}</td>
+          </tr>
+          <tr>
+            <td><b>Người gửi:</b></td>
+            <td>${seller?.name || "-"}</td>
+          </tr>
+        </table>
+
+        <p style="margin-top:16px">
+          Nếu bạn có bất kỳ vấn đề nào về đơn hàng, vui lòng liên hệ bộ phận hỗ trợ.
+        </p>
+
+        <p style="margin-top:24px">
+          Trân trọng,<br/>
+          <b>Hệ thống giao hàng</b>
+        </p>
+      </div>
+    `,
+  });
+}
