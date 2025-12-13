@@ -537,10 +537,10 @@ export const bulkPrintOrdersPdf = catchError(async (req, res) => {
 
 
     // --- Sau khi sinh PDF => Cập nhật printed = true ---
-    // await OrderModel.updateMany(
-    //     { _id: { $in: ids } },
-    //     { $set: { printed: true } }
-    // );
+    await OrderModel.updateMany(
+        { _id: { $in: ids } },
+        { $set: { printed: true } }
+    );
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
